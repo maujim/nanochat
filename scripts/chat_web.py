@@ -455,7 +455,7 @@ async def visualize_attention(request: VizRequest):
 
         # 3. Generate bertviz HTML
         # The head_view function returns a string containing HTML/JS
-        html = head_view(attention, token_strings, html_action='return_html')
+        html = head_view(attention, token_strings, html_action='return')
 
         return HTMLResponse(content=html)
     finally:
