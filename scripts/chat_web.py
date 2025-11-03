@@ -41,7 +41,7 @@ import random
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse, HTMLResponse, FileResponse
+from fastapi.responses import StreamingResponse, HTMLResponse, FileResponse, JSONResponse
 from pydantic import BaseModel
 from typing import List, Optional, AsyncGenerator
 from dataclasses import dataclass
@@ -157,6 +157,9 @@ class ChatRequest(BaseModel):
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
     top_k: Optional[int] = None
+
+class VizRequest(BaseModel):
+    messages: List[ChatMessage]
 
 def validate_chat_request(request: ChatRequest):
     """Validate chat request to prevent abuse."""
@@ -428,6 +431,80 @@ async def stats():
             } for w in worker_pool.workers
         ]
     }
+
+@app.post("/chat/visualize_attention")
+async def visualize_attention(request: VizRequest):
+    """Generates and returns attention visualization using bertviz."""
+    from bertviz import head_view
+
+    worker_pool = app.state.worker_pool
+    # Use any available worker, as this is a single, non-streaming request
+    worker = await worker_pool.acquire_worker()
+    try:
+        # 1. Tokenize the conversation
+        # We'll just join the content for a simple visualization
+        full_text = " ".join([m.content for m in request.messages])
+        tokens = worker.tokenizer.encode(full_text)
+        token_strings = [worker.tokenizer.decode([t]) for t in tokens]
+
+        # 2. Run the visualization forward pass
+        with worker.autocast_ctx:
+            ids = torch.tensor([tokens], device=worker.device)
+            viz_outputs = worker.engine.model.forward_with_viz(ids)
+            attention = [a.to("cpu") for a in viz_outputs["attentions"]] # Move to CPU for bertviz
+
+        # 3. Generate bertviz HTML
+        # The head_view function returns a string containing HTML/JS
+        html = head_view(attention, token_strings, html_action='return_html')
+
+        return HTMLResponse(content=html)
+    finally:
+        await worker_pool.release_worker(worker)
+
+@app.post("/chat/attribute_tokens")
+async def attribute_tokens(request: VizRequest):
+    """Generates and returns token importance using Captum."""
+    from captum.attr import IntegratedGradients
+
+    worker_pool = app.state.worker_pool
+    worker = await worker_pool.acquire_worker()
+    try:
+        # 1. Tokenize
+        full_text = " ".join([m.content for m in request.messages])
+        input_ids = torch.tensor([worker.tokenizer.encode(full_text)], device=worker.device)
+
+        # 2. Set up for Captum (requires gradients)
+        worker.engine.model.train() # Set to train mode for gradients
+
+        # We need a forward function for Captum that returns a scalar
+        def forward_func(input_ids_for_grad):
+            # Run a normal forward pass to get logits
+            logits = worker.engine.model(input_ids_for_grad)
+            # Get the predicted token ID at the last position
+            predicted_id = torch.argmax(logits[:, -1, :], dim=-1)
+            # Return the logit value for that specific predicted token
+            return logits[:, -1, predicted_id]
+
+        ig = IntegratedGradients(forward_func)
+
+        # We need the word embeddings to attribute against
+        input_embeddings = worker.engine.model.transformer.wte(input_ids)
+
+        # 3. Calculate attributions
+        attributions = ig.attribute(inputs=input_embeddings, target=0)
+
+        # Normalize attributions for visualization
+        attributions = attributions.sum(dim=-1).squeeze(0)
+        attributions = attributions / torch.norm(attributions)
+        attributions = attributions.cpu().tolist()
+
+        worker.engine.model.eval() # Set back to eval mode
+
+        tokens = [worker.tokenizer.decode([t]) for t in input_ids.squeeze(0).tolist()]
+
+        return JSONResponse(content={"tokens": tokens, "scores": attributions})
+    finally:
+        await worker_pool.release_worker(worker)
 
 if __name__ == "__main__":
     import uvicorn
