@@ -453,11 +453,117 @@ async def visualize_attention(request: VizRequest):
             viz_outputs = worker.engine.model.forward_with_viz(ids)
             attention = [a.to("cpu") for a in viz_outputs["attentions"]] # Move to CPU for bertviz
 
-        # 3. Generate bertviz HTML
-        # The head_view function returns a string containing HTML/JS
-        html = head_view(attention, token_strings, html_action='return')
+        # 3. Generate attention visualization HTML
+        # Create our own HTML wrapper for attention visualization instead of using bertviz directly
+        import json
 
-        return HTMLResponse(content=html)
+        # Convert attention tensors to lists for JSON serialization
+        attention_data = []
+        for layer_attention in attention:
+            layer_data = layer_attention.tolist()  # Convert tensor to list
+            attention_data.append(layer_data)
+
+        # Create HTML with attention visualization
+        html_template = f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Attention Visualization</title>
+            <style>
+                body {{ font-family: Arial, sans-serif; margin: 20px; }}
+                .layer-section {{ margin-bottom: 30px; }}
+                .layer-title {{ font-weight: bold; margin: 10px 0 5px 0; font-size: 16px; color: #333; }}
+                .head-title {{ font-size: 12px; margin-bottom: 5px; color: #666; }}
+                table {{ border-collapse: collapse; font-size: 10px; width: 100%; }}
+                th, td {{ border: 1px solid #ddd; padding: 2px; text-align: center; }}
+                th {{ background-color: #f5f5f5; }}
+                .token-cell {{ max-width: 50px; overflow: hidden; text-overflow: ellipsis; }}
+            </style>
+        </head>
+        <body>
+            <h3>Attention Visualization</h3>
+            <p>Showing attention patterns across layers and heads. Brighter colors indicate higher attention weights.</p>
+            <div id="attention-viz"></div>
+
+        <script>
+            const attentionData = {json.dumps(attention_data)};
+            const tokens = {json.dumps(token_strings)};
+
+            // Simple attention heat map visualization
+            const viz = document.getElementById('attention-viz');
+
+            attentionData.forEach((layer, layerIdx) => {{
+                const layerDiv = document.createElement('div');
+                layerDiv.className = 'layer-section';
+
+                const title = document.createElement('div');
+                title.className = 'layer-title';
+                title.textContent = `Layer ${{layerIdx + 1}}`;
+                layerDiv.appendChild(title);
+
+                // Show attention for the first few heads to avoid clutter
+                layer.slice(0, Math.min(4, layer.length)).forEach((head, headIdx) => {{
+                    const headDiv = document.createElement('div');
+                    headDiv.style.marginBottom = '15px';
+
+                    const headTitle = document.createElement('div');
+                    headTitle.className = 'head-title';
+                    headTitle.textContent = `Head ${{headIdx + 1}}`;
+                    headDiv.appendChild(headTitle);
+
+                    // Create a table for attention weights
+                    const table = document.createElement('table');
+
+                    // Add header row with tokens
+                    const headerRow = table.insertRow();
+                    const emptyHeader = document.createElement('th');
+                    emptyHeader.textContent = 'Source\\\\Target';
+                    headerRow.appendChild(emptyHeader);
+
+                    tokens.slice(0, 10).forEach((token, i) => {{
+                        const th = document.createElement('th');
+                        th.textContent = token.length > 8 ? token.substring(0, 8) + '...' : token;
+                        th.title = token;
+                        th.className = 'token-cell';
+                        headerRow.appendChild(th);
+                    }});
+
+                    // Add attention weights for each token
+                    const maxTokens = Math.min(tokens.length, 10);
+                    head[0].slice(0, maxTokens).forEach((attentionWeights, sourceIdx) => {{
+                        const row = table.insertRow();
+
+                        // Add source token label
+                        const sourceLabel = document.createElement('th');
+                        sourceLabel.textContent = tokens[sourceIdx].length > 8 ? tokens[sourceIdx].substring(0, 8) + '...' : tokens[sourceIdx];
+                        sourceLabel.title = tokens[sourceIdx];
+                        sourceLabel.className = 'token-cell';
+                        row.appendChild(sourceLabel);
+
+                        // Add attention weights
+                        attentionWeights.slice(0, maxTokens).forEach((weight, targetIdx) => {{
+                            const cell = row.insertCell();
+                            cell.textContent = weight.toFixed(2);
+                            const intensity = Math.min(Math.abs(weight), 1);
+                            const hue = weight > 0 ? 207 : 0; // Blue for positive
+                            cell.style.backgroundColor = `hsla(${{hue}}, 70%, 50%, ${{intensity}})`;
+                            cell.style.color = intensity > 0.5 ? 'white' : 'black';
+                            cell.style.fontWeight = intensity > 0.7 ? 'bold' : 'normal';
+                        }});
+                    }});
+
+                    headDiv.appendChild(table);
+                    layerDiv.appendChild(headDiv);
+                }});
+
+                viz.appendChild(layerDiv);
+            }});
+        </script>
+        </body>
+        </html>
+        """
+
+        return HTMLResponse(content=html_template)
     finally:
         await worker_pool.release_worker(worker)
 
