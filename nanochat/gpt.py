@@ -180,6 +180,9 @@ class GPT(nn.Module):
             "h": nn.ModuleList([Block(config, layer_idx) for layer_idx in range(config.n_layer)]),
         })
         self.lm_head = nn.Linear(config.n_embd, config.vocab_size, bias=False)
+        # Hooks for capturing embeddings and logits
+        self.token_embeddings = None
+        self.output_logits = None
         # To support meta device initialization, we init the rotary embeddings here, but it's fake
         # As for rotary_seq_len, these rotary embeddings are pretty small/cheap in memory,
         # so let's just over-compute them, but assert fail if we ever reach that amount.
@@ -290,6 +293,7 @@ class GPT(nn.Module):
 
         # Forward the trunk of the Transformer
         x = self.transformer.wte(idx)
+        self.token_embeddings = x.detach().cpu()
         x = norm(x)
         for block in self.transformer.h:
             x = block(x, cos_sin, kv_cache)
@@ -297,18 +301,18 @@ class GPT(nn.Module):
 
         # Forward the lm_head (compute logits)
         softcap = 15
+        logits = self.lm_head(x)
+        logits = softcap * torch.tanh(logits / softcap) # logits softcap
+        self.output_logits = logits.detach().cpu()
+
         if targets is not None:
             # training mode: compute and return the loss
             # TODO: experiment with Liger Kernels / chunked cross-entropy etc.
-            logits = self.lm_head(x)
-            logits = softcap * torch.tanh(logits / softcap) # logits softcap
             logits = logits.float() # use tf32/fp32 for logits
             loss = F.cross_entropy(logits.view(-1, logits.size(-1)), targets.view(-1), ignore_index=-1, reduction=loss_reduction)
             return loss
         else:
             # inference mode: compute and return the logits
-            logits = self.lm_head(x)
-            logits = softcap * torch.tanh(logits / softcap) # logits softcap
             return logits
 
     @torch.inference_mode()
