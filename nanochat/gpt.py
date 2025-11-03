@@ -110,6 +110,50 @@ class CausalSelfAttention(nn.Module):
         return y
 
 
+class CausalSelfAttentionWithWeights(CausalSelfAttention):
+    def forward(self, x, cos_sin, kv_cache=None):
+        B, T, C = x.size()
+
+        # Project and prepare queries, keys, values
+        q = self.c_q(x).view(B, T, self.n_head, self.head_dim)
+        k = self.c_k(x).view(B, T, self.n_kv_head, self.head_dim)
+        v = self.c_v(x).view(B, T, self.n_kv_head, self.head_dim)
+
+        cos, sin = cos_sin
+        q, k = apply_rotary_emb(q, cos, sin), apply_rotary_emb(k, cos, sin)
+        q, k = norm(q), norm(k)
+        q, k, v = q.transpose(1, 2), k.transpose(1, 2), v.transpose(1, 2)
+
+        # For simplicity in visualization, we'll handle the training case without KV cache
+        if kv_cache is not None:
+            # Fall back to parent implementation if KV cache is used
+            return super().forward(x, cos_sin, kv_cache)
+
+        # --- Manual Attention Calculation ---
+        enable_gqa = self.n_head != self.n_kv_head
+        if enable_gqa:
+            # Handle GQA by expanding k,v to match query heads
+            k = k.repeat_interleave(self.n_head // self.n_kv_head, dim=1)
+            v = v.repeat_interleave(self.n_head // self.n_kv_head, dim=1)
+
+        attn = (q @ k.transpose(-2, -1)) * (1.0 / math.sqrt(k.size(-1)))
+
+        # Causal mask
+        mask = torch.triu(torch.ones(T, T, device=x.device, dtype=torch.bool), diagonal=1)
+        attn = attn.masked_fill(mask, float('-inf'))
+
+        attn = F.softmax(attn, dim=-1)
+
+        y = attn @ v
+        # --- End Manual Attention ---
+
+        y = y.transpose(1, 2).contiguous().view(B, T, -1)
+        y = self.c_proj(y)
+
+        # Return both the output and the attention weights
+        return y, attn
+
+
 class MLP(nn.Module):
     def __init__(self, config):
         super().__init__()
@@ -274,6 +318,45 @@ class GPT(nn.Module):
             logits = self.lm_head(x)
             logits = softcap * torch.tanh(logits / softcap) # logits softcap
             return logits
+
+    @torch.no_grad()
+    def forward_with_viz(self, idx):
+        B, T = idx.size()
+        cos_sin = self.cos[:, :T], self.sin[:, :T]
+
+        # Forward the trunk of the Transformer, collecting states
+        hidden_states = []
+        attention_weights = []
+
+        x = self.transformer.wte(idx)
+        x = norm(x)
+        hidden_states.append(x)
+
+        for layer_idx, block in enumerate(self.transformer.h):
+            # Temporarily replace the attention module with our version
+            original_attn_module = block.attn
+            block.attn = CausalSelfAttentionWithWeights(self.config, layer_idx).to(x.device).to(x.dtype)
+            block.attn.load_state_dict(original_attn_module.state_dict())
+
+            # Forward block, capturing attention
+            attn_out, attn_w = block.attn(norm(x), cos_sin, kv_cache=None)
+            x = x + attn_out
+            x = x + block.mlp(norm(x))
+
+            # Restore original module
+            block.attn = original_attn_module
+
+            hidden_states.append(x)
+            attention_weights.append(attn_w)
+
+        x = norm(x)
+        logits = self.lm_head(x)
+
+        return {
+            "logits": logits,
+            "hidden_states": hidden_states, # List of tensors, one per layer
+            "attentions": attention_weights # List of tensors, one per layer
+        }
 
     @torch.inference_mode()
     def generate(self, tokens, max_tokens, temperature=1.0, top_k=None, seed=42):
