@@ -490,13 +490,8 @@ async def attribute_tokens(request: VizRequest):
                 # Run forward pass with token IDs (the hook will replace the embeddings)
                 logits = worker.engine.model(input_ids)
 
-                # Get the predicted token ID at the last position
-                predicted_id = torch.argmax(logits[:, -1, :], dim=-1)
-
-                # Return the logit value for that specific predicted token as a scalar
-                result = logits[:, -1, predicted_id].sum()
-
-                return result
+                # Return all logits for the last position, let Captum select the target
+                return logits[:, -1, :]
             finally:
                 # Remove the hook to avoid side effects
                 hook_handle.remove()
@@ -510,7 +505,7 @@ async def attribute_tokens(request: VizRequest):
         # Get the target token ID for attribution
         with torch.no_grad():
             original_logits = worker.engine.model(input_ids)
-            target_token_id = torch.argmax(original_logits[:, -1, :], dim=-1)
+            target_token_id = torch.argmax(original_logits[:, -1, :], dim=-1).item()
 
         # 3. Calculate attributions with proper target
         attributions = ig.attribute(inputs=input_embeddings, target=target_token_id)
