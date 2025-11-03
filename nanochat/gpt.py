@@ -142,10 +142,32 @@ class Block(nn.Module):
         super().__init__()
         self.attn = CausalSelfAttention(config, layer_idx)
         self.mlp = MLP(config)
+        self.layer_idx = layer_idx
+        # Hooks for capturing activations
+        self.pre_attn_norm = None
+        self.post_attn = None
+        self.pre_mlp_norm = None
+        self.post_mlp = None
 
     def forward(self, x, cos_sin, kv_cache):
-        x = x + self.attn(norm(x), cos_sin, kv_cache)
-        x = x + self.mlp(norm(x))
+        # Capture pre-attention normalization
+        x_norm = norm(x)
+        self.pre_attn_norm = x_norm.detach().cpu()
+
+        # Attention block
+        attn_out = self.attn(x_norm, cos_sin, kv_cache)
+        self.post_attn = attn_out.detach().cpu()
+        x = x + attn_out
+
+        # Capture pre-MLP normalization
+        x_norm = norm(x)
+        self.pre_mlp_norm = x_norm.detach().cpu()
+
+        # MLP block
+        mlp_out = self.mlp(x_norm)
+        self.post_mlp = mlp_out.detach().cpu()
+        x = x + mlp_out
+
         return x
 
 
