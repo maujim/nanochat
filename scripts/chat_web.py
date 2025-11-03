@@ -477,18 +477,38 @@ async def attribute_tokens(request: VizRequest):
         worker.engine.model.train() # Set to train mode for gradients
 
         # We need a forward function for Captum that returns a scalar
-        def forward_func(input_ids_for_grad):
-            # Run a normal forward pass to get logits
-            logits = worker.engine.model(input_ids_for_grad)
+        # This function takes embeddings as input and replaces the model's embedding layer temporarily
+        def forward_func(input_embeddings_for_grad):
+            # Temporarily replace the embedding weights with our input embeddings
+            original_embeddings = worker.engine.model.transformer.wte.weight.data.clone()
+
+            # Create a new embedding layer with our input embeddings as weights
+            # This allows gradients to flow back to the input embeddings
+            with torch.no_grad():
+                worker.engine.model.transformer.wte.weight.copy_(input_embeddings_for_grad.squeeze(0))
+
+            # Create token IDs (0, 1, 2, ..., seq_len-1) to index into our custom embeddings
+            token_indices = torch.arange(input_embeddings_for_grad.size(1), device=worker.device).unsqueeze(0)
+
+            # Run forward pass with our custom embeddings
+            logits = worker.engine.model(token_indices)
+
             # Get the predicted token ID at the last position
             predicted_id = torch.argmax(logits[:, -1, :], dim=-1)
+
             # Return the logit value for that specific predicted token
-            return logits[:, -1, predicted_id]
+            result = logits[:, -1, predicted_id]
+
+            # Restore original embeddings
+            worker.engine.model.transformer.wte.weight.copy_(original_embeddings)
+
+            return result
 
         ig = IntegratedGradients(forward_func)
 
         # We need the word embeddings to attribute against
         input_embeddings = worker.engine.model.transformer.wte(input_ids)
+        input_embeddings = input_embeddings.requires_grad_(True)
 
         # 3. Calculate attributions
         attributions = ig.attribute(inputs=input_embeddings, target=0)
