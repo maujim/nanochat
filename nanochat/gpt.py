@@ -62,6 +62,8 @@ class CausalSelfAttention(nn.Module):
         self.c_k = nn.Linear(self.n_embd, self.n_kv_head * self.head_dim, bias=False)
         self.c_v = nn.Linear(self.n_embd, self.n_kv_head * self.head_dim, bias=False)
         self.c_proj = nn.Linear(self.n_embd, self.n_embd, bias=False)
+        # Hook for capturing attention weights
+        self.attention_weights = None
 
     def forward(self, x, cos_sin, kv_cache):
         B, T, C = x.size()
@@ -85,24 +87,36 @@ class CausalSelfAttention(nn.Module):
 
         # Attention: queries attend to keys/values autoregressively. A few cases to handle:
         enable_gqa = self.n_head != self.n_kv_head # Group Query Attention (GQA): duplicate key/value heads to match query heads if desired
+
+        # Manual attention computation to capture attention weights
+        scale = 1.0 / math.sqrt(self.head_dim)
+        attn_scores = torch.matmul(q, k.transpose(-2, -1)) * scale  # (B, H, Tq, Tk)
+
+        # Create attention mask
         if kv_cache is None or Tq == Tk:
-            # During training (no KV cache), attend as usual with causal attention
-            # And even if there is KV cache, we can still use this simple version when Tq == Tk
-            y = F.scaled_dot_product_attention(q, k, v, is_causal=True, enable_gqa=enable_gqa)
+            # During training or when Tq == Tk: use causal attention
+            attn_mask = torch.tril(torch.ones((Tq, Tk), dtype=torch.bool, device=q.device))
         elif Tq == 1:
-            # During inference but with a single query in this forward pass:
-            # The query has to attend to all the keys/values in the cache
-            y = F.scaled_dot_product_attention(q, k, v, is_causal=False, enable_gqa=enable_gqa)
+            # During inference with single query: attend to all keys/values
+            attn_mask = torch.ones((Tq, Tk), dtype=torch.bool, device=q.device)
         else:
-            # During inference AND we have a chunk of queries in this forward pass:
-            # First, each query attends to all the cached keys/values (i.e. full prefix)
-            attn_mask = torch.zeros((Tq, Tk), dtype=torch.bool, device=q.device) # True = keep, False = mask
+            # During inference with chunk: attend to prefix + causal within chunk
+            attn_mask = torch.zeros((Tq, Tk), dtype=torch.bool, device=q.device)
             prefix_len = Tk - Tq
-            if prefix_len > 0: # can't be negative but could be zero
+            if prefix_len > 0:
                 attn_mask[:, :prefix_len] = True
-            # Then, causal attention within this chunk
             attn_mask[:, prefix_len:] = torch.tril(torch.ones((Tq, Tq), dtype=torch.bool, device=q.device))
-            y = F.scaled_dot_product_attention(q, k, v, attn_mask=attn_mask, enable_gqa=enable_gqa)
+
+        # Apply mask and compute attention weights
+        attn_mask = attn_mask.unsqueeze(0).unsqueeze(0)  # (1, 1, Tq, Tk)
+        attn_scores = attn_scores.masked_fill(~attn_mask, float('-inf'))
+        attn_weights = F.softmax(attn_scores, dim=-1)  # (B, H, Tq, Tk)
+
+        # Store attention weights for instrumentation
+        self.attention_weights = attn_weights.detach().cpu()
+
+        # Apply attention to values
+        y = torch.matmul(attn_weights, v)  # (B, H, Tq, head_dim)
 
         # Re-assemble the heads side by side and project back to residual stream
         y = y.transpose(1, 2).contiguous().view(B, T, -1)
