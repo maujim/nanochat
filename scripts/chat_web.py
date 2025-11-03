@@ -493,8 +493,8 @@ async def attribute_tokens(request: VizRequest):
                 # Get the predicted token ID at the last position
                 predicted_id = torch.argmax(logits[:, -1, :], dim=-1)
 
-                # Return the logit value for that specific predicted token
-                result = logits[:, -1, predicted_id]
+                # Return the logit value for that specific predicted token as a scalar
+                result = logits[:, -1, predicted_id].sum()
 
                 return result
             finally:
@@ -507,8 +507,13 @@ async def attribute_tokens(request: VizRequest):
         input_embeddings = worker.engine.model.transformer.wte(input_ids)
         input_embeddings = input_embeddings.requires_grad_(True)
 
-        # 3. Calculate attributions
-        attributions = ig.attribute(inputs=input_embeddings)
+        # Get the target token ID for attribution
+        with torch.no_grad():
+            original_logits = worker.engine.model(input_ids)
+            target_token_id = torch.argmax(original_logits[:, -1, :], dim=-1)
+
+        # 3. Calculate attributions with proper target
+        attributions = ig.attribute(inputs=input_embeddings, target=target_token_id)
 
         # Normalize attributions for visualization
         attributions = attributions.sum(dim=-1).squeeze(0)
