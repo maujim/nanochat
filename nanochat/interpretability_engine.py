@@ -179,7 +179,7 @@ class InterpretabilityEngine:
 
         # Save intermediate captures if collected
         if capture_intermediate_steps and step_captures:
-            self._save_intermediate_captures(trace_id, step_captures, all_generated_tokens)
+            self.storage.save_intermediate_steps(trace_id, step_captures)
 
         return {
             "trace_id": trace_id,
@@ -190,48 +190,7 @@ class InterpretabilityEngine:
             "metadata": trace_metadata
         }
 
-    def _save_intermediate_captures(self, trace_id: str, step_captures: List[Dict[str, Any]],
-                                  generated_tokens: List[int]):
-        """Save intermediate captures for step-by-step analysis."""
-        import h5py
-        import numpy as np
-        from pathlib import Path
-
-        hdf5_file = Path(self.storage.base_dir) / f"{trace_id}_data.h5"
-
-        with h5py.File(hdf5_file, 'a') as f:
-            intermediate_group = f.create_group("intermediate_steps")
-            intermediate_group.create_dataset("generated_tokens", data=np.array(generated_tokens, dtype=np.int32))
-
-            steps_group = intermediate_group.create_group("steps")
-            for step_idx, step_capture in enumerate(step_captures):
-                step_group = steps_group.create_group(f"step_{step_idx}")
-
-                # Save embeddings and logits for this step
-                if step_capture["token_embeddings"] is not None:
-                    step_group.create_dataset("token_embeddings",
-                                            data=step_capture["token_embeddings"].numpy())
-                if step_capture["output_logits"] is not None:
-                    step_group.create_dataset("output_logits",
-                                            data=step_capture["output_logits"].numpy())
-
-                # Save attention weights for this step
-                attn_group = step_group.create_group("attention_weights")
-                for layer_idx, attn_weights in enumerate(step_capture["attention_weights"]):
-                    if attn_weights is not None:
-                        attn_group.create_dataset(f"layer_{layer_idx}",
-                                                data=attn_weights.numpy())
-
-                # Save layer activations for this step
-                activations_group = step_group.create_group("layer_activations")
-                for layer_idx, activations in enumerate(step_capture["layer_activations"]):
-                    if activations:
-                        layer_group = activations_group.create_group(f"layer_{layer_idx}")
-                        for name, activation in activations.items():
-                            if activation is not None:
-                                layer_group.create_dataset(name,
-                                                        data=activation.numpy())
-
+    
     def analyze_trace(self, trace_id: str) -> Dict[str, Any]:
         """
         Analyze a saved trace and return insights.
@@ -242,8 +201,9 @@ class InterpretabilityEngine:
         Returns:
             Analysis results including attention patterns and activation statistics
         """
+        trace_data = self.storage.load_trace(trace_id)
         metadata = self.storage.load_trace_metadata(trace_id)
-        data = self.storage.load_trace_data(trace_id)
+        model_data = trace_data["model_data"]
 
         analysis = {
             "trace_id": trace_id,
@@ -252,23 +212,23 @@ class InterpretabilityEngine:
         }
 
         # Analyze attention patterns
-        if "attention_weights" in data:
-            attention_analysis = self._analyze_attention_patterns(data["attention_weights"])
+        if "attention_weights" in model_data and model_data["attention_weights"]:
+            attention_analysis = self._analyze_attention_patterns(model_data["attention_weights"])
             analysis["analysis"]["attention"] = attention_analysis
 
         # Analyze activation statistics
-        if "layer_activations" in data:
-            activation_analysis = self._analyze_activation_patterns(data["layer_activations"])
+        if "layer_activations" in model_data and model_data["layer_activations"]:
+            activation_analysis = self._analyze_activation_patterns(model_data["layer_activations"])
             analysis["analysis"]["activations"] = activation_analysis
 
         # Analyze logits
-        if "output_logits" in data:
-            logits_analysis = self._analyze_logits(data["output_logits"])
+        if "output_logits" in model_data and model_data["output_logits"]:
+            logits_analysis = self._analyze_logits(model_data["output_logits"])
             analysis["analysis"]["logits"] = logits_analysis
 
         return analysis
 
-    def _analyze_attention_patterns(self, attention_data: Dict[str, np.ndarray]) -> Dict[str, Any]:
+    def _analyze_attention_patterns(self, attention_data: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
         """Analyze attention patterns across layers."""
         patterns = {
             "num_layers": len([k for k in attention_data.keys() if k.startswith("layer_")]),
@@ -276,9 +236,10 @@ class InterpretabilityEngine:
         }
 
         for layer_name, attn_weights in attention_data.items():
-            if layer_name.startswith("layer_"):
+            if layer_name.startswith("layer_") and attn_weights and "data" in attn_weights:
                 layer_idx = layer_name.split("_")[1]
-                attn_tensor = torch.from_numpy(attn_weights)
+                attn_list = attn_weights["data"]
+                attn_tensor = torch.tensor(attn_list)
 
                 # Compute statistics
                 patterns["layer_stats"][layer_idx] = {
@@ -290,42 +251,41 @@ class InterpretabilityEngine:
 
         return patterns
 
-    def _analyze_activation_patterns(self, activation_data: Dict[str, np.ndarray]) -> Dict[str, Any]:
+    def _analyze_activation_patterns(self, activation_data: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
         """Analyze activation patterns across layers."""
         patterns = {
             "layer_stats": {}
         }
 
-        # Group activations by layer and type
-        layers = {}
-        for key, activation in activation_data.items():
-            if key.startswith("layer_"):
-                parts = key.split("_", 2)
-                layer_idx = parts[1]
-                activation_type = "_".join(parts[2:])
+        for layer_name, layer_data in activation_data.items():
+            if layer_name.startswith("layer_"):
+                layer_idx = layer_name.split("_")[1]
+                layer_stats = {}
 
-                if layer_idx not in layers:
-                    layers[layer_idx] = {}
-                layers[layer_idx][activation_type] = torch.from_numpy(activation)
+                for activation_type, activation in layer_data.items():
+                    if activation and "data" in activation:
+                        activation_list = activation["data"]
+                        activation_tensor = torch.tensor(activation_list)
 
-        # Analyze each layer
-        for layer_idx, layer_activations in layers.items():
-            layer_stats = {}
-            for activation_type, activation in layer_activations.items():
-                layer_stats[activation_type] = {
-                    "mean": float(activation.mean()),
-                    "std": float(activation.std()),
-                    "max": float(activation.max()),
-                    "min": float(activation.min()),
-                    "sparsity": float((activation.abs() < 1e-6).float().mean())
-                }
-            patterns["layer_stats"][layer_idx] = layer_stats
+                        layer_stats[activation_type] = {
+                            "mean": float(activation_tensor.mean()),
+                            "std": float(activation_tensor.std()),
+                            "max": float(activation_tensor.max()),
+                            "min": float(activation_tensor.min()),
+                            "sparsity": float((activation_tensor.abs() < 1e-6).float().mean())
+                        }
+
+                patterns["layer_stats"][layer_idx] = layer_stats
 
         return patterns
 
-    def _analyze_logits(self, logits_data: np.ndarray) -> Dict[str, Any]:
+    def _analyze_logits(self, logits_data: Dict[str, Any]) -> Dict[str, Any]:
         """Analyze output logits."""
-        logits = torch.from_numpy(logits_data)
+        if not logits_data or "data" not in logits_data:
+            return {}
+
+        logits_list = logits_data["data"]
+        logits = torch.tensor(logits_list)
 
         return {
             "mean_logit": float(logits.mean()),
