@@ -275,6 +275,11 @@
             </button>
             <h1>nanochat</h1>
         </div>
+        <!-- Add new buttons to the header -->
+        <div style="display: flex; gap: 0.5rem;">
+            <button onclick="visualizeAttention()" style="padding: 0.5rem 1rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background-color: #ffffff; color: #374151; cursor: pointer; font-size: 0.875rem; transition: all 0.2s ease;" onmouseover="this.style.backgroundColor='#f3f4f6'" onmouseout="this.style.backgroundColor='#ffffff'">Visualize Attention</button>
+            <button onclick="attributeTokens()" style="padding: 0.5rem 1rem; border: 1px solid #e5e7eb; border-radius: 0.5rem; background-color: #ffffff; color: #374151; cursor: pointer; font-size: 0.875rem; transition: all 0.2s ease;" onmouseover="this.style.backgroundColor='#f3f4f6'" onmouseout="this.style.backgroundColor='#ffffff'">Token Importance</button>
+        </div>
     </div>
 
     <div class="chat-container" id="chatContainer">
@@ -303,6 +308,14 @@
         </div>
     </div>
 
+    <!-- Add a modal for displaying visualizations -->
+    <div id="vizModal" style="display:none; position:fixed; z-index:100; left:0; top:0; width:100%; height:100%; overflow:auto; background-color:rgba(0,0,0,0.4);">
+      <div style="background-color:#fefefe; margin:5% auto; padding:20px; border:1px solid #888; width:80%; max-width:1200px; border-radius:8px;">
+        <span onclick="closeModal()" style="color:#aaa; float:right; font-size:28px; font-weight:bold; cursor:pointer; user-select:none;">&times;</span>
+        <div id="modalContent"></div>
+      </div>
+    </div>
+
     <script>
         const API_URL = '';
         const chatContainer = document.getElementById('chatContainer');
@@ -310,6 +323,8 @@
         const chatInput = document.getElementById('chatInput');
         const sendButton = document.getElementById('sendButton');
         const vizContainer = document.getElementById('vizContainer');
+        const vizModal = document.getElementById('vizModal');
+        const modalContent = document.getElementById('modalContent');
 
         let messages = [];
         let isGenerating = false;
@@ -598,6 +613,60 @@
         }
 
         sendButton.disabled = false;
+
+        // Modal functions for visualization
+        function closeModal() {
+            vizModal.style.display = 'none';
+            modalContent.innerHTML = '';
+        }
+
+        async function visualizeAttention() {
+            if (isGenerating || messages.length === 0) return;
+            modalContent.innerHTML = 'Generating attention visualization...';
+            vizModal.style.display = 'block';
+
+            const response = await fetch(`${API_URL}/chat/visualize_attention`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ messages: messages }),
+            });
+            const html = await response.text();
+            // Use an iframe to isolate the bertviz styles and scripts
+            modalContent.innerHTML = `<iframe srcdoc="${html.replace(/"/g, '&quot;')}" style="width:100%; height:80vh; border:none;"></iframe>`;
+        }
+
+        async function attributeTokens() {
+            if (isGenerating || messages.length === 0) return;
+            modalContent.innerHTML = 'Calculating token attributions...';
+            vizModal.style.display = 'block';
+
+            const response = await fetch(`${API_URL}/chat/attribute_tokens`, {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ messages: messages }),
+            });
+            const data = await response.json();
+
+            // Create a simple color-coded visualization
+            let html = '<h3>Token Importance (Integrated Gradients)</h3><div style="line-height: 1.8; font-family: monospace; font-size: 14px;">';
+            const maxScore = Math.max(...data.scores.map(Math.abs));
+            data.tokens.forEach((token, i) => {
+                const score = data.scores[i];
+                const intensity = Math.abs(score) / maxScore;
+                const color = score > 0 ? `rgba(110, 231, 183, ${intensity})` : `rgba(252, 165, 165, ${intensity})`;
+                const cleanToken = token.replace(/\n/g, '↵').replace(/\s/g, '·');
+                html += `<span style="background-color:${color}; padding: 2px 4px; border-radius:3px; margin: 1px; display: inline-block;">${cleanToken}</span>`;
+            });
+            html += '</div><div style="margin-top: 15px; font-size: 12px; color: #666;"><span style="background-color:rgba(110, 231, 183, 0.5); padding: 2px 4px; border-radius:3px;">Positive</span> = Increases probability, <span style="background-color:rgba(252, 165, 165, 0.5); padding: 2px 4px; border-radius:3px;">Negative</span> = Decreases probability</div>';
+            modalContent.innerHTML = html;
+        }
+
+        // Close modal when clicking outside of it
+        window.onclick = function(event) {
+            if (event.target == vizModal) {
+                closeModal();
+            }
+        }
 
         // Autofocus the chat input on page load
         chatInput.focus();
