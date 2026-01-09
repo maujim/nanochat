@@ -699,7 +699,7 @@
                 <div class="side-panel-active-content" style="display: none;">
                     <div class="logit-lens-info">
                         <strong>Logit Lens:</strong> Shows what each transformer layer predicts using greedy decoding.
-                        This may differ from the actual message which uses sampling.
+                        <strong style="color: #dc2626;">Red text</strong> highlights where the layer's prediction differs from the actual sampled output.
                         <div class="sampling-params">
                             <strong>Sampling:</strong> <span id="sidePanelSamplingParams">N/A</span>
                         </div>
@@ -895,7 +895,11 @@
 
             const layerName = data.layer_names[layerIndex];
             const layerText = data.layer_texts[layerIndex];
-            const finalText = data.layer_texts[data.layer_texts.length - 1];
+
+            // Compare to actual message text instead of final layer
+            // This shows how each layer differs from what was actually generated (with sampling)
+            const actualMessageText = messages[currentSelectedMessage]?.content || '';
+            const comparisonText = actualMessageText || data.layer_texts[data.layer_texts.length - 1];
 
             // Update layer info
             document.getElementById('sidePanelLayerInfo').innerHTML = `
@@ -904,7 +908,7 @@
             `;
 
             // Create highlighted text
-            const highlightedText = createHighlightedText(layerText, finalText);
+            const highlightedText = createHighlightedText(layerText, comparisonText);
             document.getElementById('sidePanelOutput').innerHTML = highlightedText;
         }
 

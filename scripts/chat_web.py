@@ -453,7 +453,7 @@ async def generate_stream(
 
                         # Greedy decoding for logit-lens (shows what each layer would predict)
                         decoded_tokens = torch.argmax(generated_logits, dim=-1).tolist()
-                        layer_text = worker.tokenizer.decode(decoded_tokens)
+                        layer_text = worker.tokenizer.decode(decoded_tokens, skip_special_tokens=True)
                         layer_texts.append(layer_text)
                         print(f"LOGIT-LENS: Layer {layer_idx}: decoded {len(decoded_tokens)} tokens, text length: {len(layer_text)}")
 
