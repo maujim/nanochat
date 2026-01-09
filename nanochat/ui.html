@@ -327,35 +327,6 @@
             align-items: flex-end;
         }
 
-        .viz-container {
-            position: absolute;
-            bottom: calc(100% + 1rem); /* Position it above the input area */
-            right: 0;
-            width: 300px;
-            background-color: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.75rem;
-            padding: 0.75rem;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.8rem;
-            color: #4b5563;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-        }
-
-        .viz-container.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .viz-container pre {
-            margin: 0;
-            white-space: pre-wrap;
-            word-break: break-all;
-        }
-
         .chat-input {
             flex: 1;
             padding: 0.8rem 1rem;
@@ -656,6 +627,60 @@
             border-left: 3px solid #3b82f6;
             padding-left: calc(1rem - 3px);
         }
+
+        /* Real-time predictions during generation */
+        .side-panel-realtime {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+        }
+
+        .realtime-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .generating-indicator {
+            color: #3b82f6;
+            font-size: 0.75rem;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .realtime-content {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'Courier New', monospace;
+            font-size: 0.8rem;
+            line-height: 1.6;
+        }
+
+        .realtime-content .prediction-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.375rem 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .realtime-content .prediction-item:last-child {
+            border-bottom: none;
+        }
+
+        .realtime-content .token-text {
+            font-weight: 500;
+            color: #1e293b;
+        }
+
+        .realtime-content .token-prob {
+            color: #64748b;
+            font-size: 0.75rem;
+        }
     </style>
 </head>
 <body>
@@ -739,13 +764,22 @@
                         Select a message to view layer predictions
                     </div>
                 </div>
+
+                <!-- Real-time predictions shown during generation -->
+                <div class="side-panel-realtime" id="realtimePredictions" style="display: none;">
+                    <div class="realtime-header">
+                        <strong>Live Predictions</strong>
+                        <span class="generating-indicator">Generating...</span>
+                    </div>
+                    <div class="realtime-content" id="realtimeContent">
+                        <!-- Top 5 predictions will appear here during generation -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <div class="input-container">
-        <!-- Add the new visualization container here -->
-        <div id="vizContainer" class="viz-container"></div>
         <div class="input-wrapper">
             <textarea
                 id="chatInput"
@@ -769,7 +803,6 @@
         const chatWrapper = document.getElementById('chatWrapper');
         const chatInput = document.getElementById('chatInput');
         const sendButton = document.getElementById('sendButton');
-        const vizContainer = document.getElementById('vizContainer');
 
         let messages = [];
         let isGenerating = false;
@@ -778,6 +811,8 @@
         let includeLogitLens = true;
         let logitLensData = {}; // Store logit-lens data per message
         let animationIntervals = {}; // Store animation intervals
+        let currentSelectedMessage = null; // Track which message is shown in side panel
+        let animationInterval = null; // Animation for side panel layer playback
 
         chatInput.addEventListener('input', function() {
             this.style.height = 'auto';
@@ -810,14 +845,16 @@
             sendButton.disabled = false;
             isGenerating = false;
             logitLensData = {}; // Clear logit lens data
-            vizContainer.classList.remove('visible'); // Hide visualization
-            vizContainer.innerHTML = ''; // Clear it
+            currentSelectedMessage = null;
+            // Reset side panel to collapsed state
+            document.getElementById('logitLensSidePanel').classList.add('collapsed');
+            document.getElementById('realtimePredictions').style.display = 'none';
+            document.querySelector('.side-panel-empty-state').style.display = 'flex';
+            document.querySelector('.side-panel-active-content').style.display = 'none';
             chatInput.focus();
         }
 
         // Side Panel Logit-Lens Functions
-        let currentSelectedMessage = null;
-        let animationInterval = null;
 
         function selectMessageForLogitLens(messageIndex) {
             const data = logitLensData[messageIndex];
@@ -1095,8 +1132,14 @@
                 allMessages[i].remove();
             }
 
-            vizContainer.classList.remove('visible'); // Hide visualization
-            vizContainer.innerHTML = ''; // Clear it
+            // Clear logit-lens data for removed messages
+            for (let i = messageIndex; i < Object.keys(logitLensData).length + messageIndex; i++) {
+                delete logitLensData[i];
+            }
+            currentSelectedMessage = null;
+            document.getElementById('realtimePredictions').style.display = 'none';
+            document.querySelector('.side-panel-empty-state').style.display = 'flex';
+            document.querySelector('.side-panel-active-content').style.display = 'none';
 
             // Enable send button and focus input
             sendButton.disabled = false;
@@ -1110,7 +1153,14 @@
             const assistantMessageIndex = messages.length;
             const assistantContent = addMessage('assistant', '', assistantMessageIndex);
             assistantContent.innerHTML = '<span class="typing-indicator"></span>';
-            vizContainer.classList.add('visible'); // Show visualization container
+
+            // Show side panel with real-time predictions
+            const sidePanel = document.getElementById('logitLensSidePanel');
+            sidePanel.classList.remove('collapsed');
+            document.querySelector('.side-panel-empty-state').style.display = 'none';
+            document.querySelector('.side-panel-active-content').style.display = 'none';
+            document.getElementById('realtimePredictions').style.display = 'block';
+            document.getElementById('realtimeContent').innerHTML = '';
 
             try {
                 const response = await fetch(`${API_URL}/chat/completions`, {
@@ -1156,15 +1206,18 @@
                                 }
                                 // --- Start of new visualization handling ---
                                 if (data.viz_data) {
-                                    let vizHtml = '<strong>Top 5 Next Token Predictions:</strong>\n';
+                                    // Show real-time predictions in side panel
+                                    const realtimeContent = document.getElementById('realtimeContent');
+                                    let vizHtml = '';
                                     data.viz_data.forEach(item => {
-                                        const probPercent = (item.prob * 100).toFixed(2);
-                                        // Use textContent to prevent any potential HTML injection from token strings
-                                        const pre = document.createElement('pre');
-                                        pre.textContent = `${probPercent.padStart(6, ' ')}% | '${item.token}'`;
-                                        vizHtml += pre.outerHTML;
+                                        const probPercent = (item.prob * 100).toFixed(1);
+                                        const escapedToken = item.token.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '↵');
+                                        vizHtml += `<div class="prediction-item">
+                                            <span class="token-text">'${escapedToken}'</span>
+                                            <span class="token-prob">${probPercent}%</span>
+                                        </div>`;
                                     });
-                                    vizContainer.innerHTML = vizHtml;
+                                    realtimeContent.innerHTML = vizHtml;
                                 }
                                 // --- Logit-lens data handling ---
                                 if (data.done && data.logit_lens) {
@@ -1179,31 +1232,28 @@
 
                 messages.push({ role: 'assistant', content: fullResponse });
 
-                // Store logit-lens data if received
+                // Hide real-time predictions
+                document.getElementById('realtimePredictions').style.display = 'none';
+
+                // Store logit-lens data if received and auto-show in side panel
                 if (receivedLogitLensData) {
                     logitLensData[assistantMessageIndex] = receivedLogitLensData;
-
-                    // Automatically show in side panel
                     selectMessageForLogitLens(assistantMessageIndex);
+                } else {
+                    // No logit-lens data, show empty state
+                    document.querySelector('.side-panel-empty-state').style.display = 'flex';
+                    document.querySelector('.side-panel-active-content').style.display = 'none';
                 }
-
-                // Add click handler to regenerate this assistant message
-                assistantContent.setAttribute('data-message-index', assistantMessageIndex);
-                assistantContent.setAttribute('title', 'Click to regenerate this response');
-                assistantContent.addEventListener('click', function() {
-                    if (!isGenerating) {
-                        regenerateMessage(assistantMessageIndex);
-                    }
-                });
 
             } catch (error) {
                 console.error('Error:', error);
                 assistantContent.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
+                // Hide real-time predictions on error
+                document.getElementById('realtimePredictions').style.display = 'none';
+                document.querySelector('.side-panel-empty-state').style.display = 'flex';
             } finally {
                 isGenerating = false;
                 sendButton.disabled = !chatInput.value.trim();
-                // Optionally hide the visualization after generation is complete
-                // setTimeout(() => vizContainer.classList.remove('visible'), 3000);
             }
         }
 
