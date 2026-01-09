@@ -628,20 +628,26 @@
             padding-left: calc(1rem - 3px);
         }
 
-        /* Real-time predictions during generation */
-        .side-panel-realtime {
+        /* Panel Sections */
+        .panel-section {
             background: #fff;
             padding: 1rem;
             border-radius: 0.5rem;
             border: 1px solid #e5e7eb;
+            margin-bottom: 1rem;
         }
 
-        .realtime-header {
+        .section-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 0.75rem;
             font-size: 0.875rem;
+        }
+
+        .section-subtitle {
+            color: #9ca3af;
+            font-size: 0.75rem;
         }
 
         .generating-indicator {
@@ -655,31 +661,92 @@
             50% { opacity: 0.5; }
         }
 
-        .realtime-content {
+        /* Token Predictions Section */
+        .predictions-scrubber {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .token-slider {
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #e5e7eb;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .token-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #8b5cf6;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .token-slider::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            background: #8b5cf6;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .token-info {
+            font-size: 0.75rem;
+            color: #6b7280;
+            min-width: 70px;
+            text-align: right;
+        }
+
+        .predictions-content {
             font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'Courier New', monospace;
             font-size: 0.8rem;
             line-height: 1.6;
         }
 
-        .realtime-content .prediction-item {
+        .predictions-empty {
+            color: #9ca3af;
+            text-align: center;
+            padding: 1rem;
+            font-family: inherit;
+            font-size: 0.8125rem;
+        }
+
+        .prediction-item {
             display: flex;
             justify-content: space-between;
             padding: 0.375rem 0;
             border-bottom: 1px solid #f1f5f9;
         }
 
-        .realtime-content .prediction-item:last-child {
+        .prediction-item:last-child {
             border-bottom: none;
         }
 
-        .realtime-content .token-text {
+        .prediction-item .token-text {
             font-weight: 500;
             color: #1e293b;
         }
 
-        .realtime-content .token-prob {
+        .prediction-item .token-prob {
             color: #64748b;
             font-size: 0.75rem;
+        }
+
+        .prediction-item.selected-token {
+            background: #fef3c7;
+            margin: 0 -0.5rem;
+            padding: 0.375rem 0.5rem;
+            border-radius: 0.25rem;
         }
     </style>
 </head>
@@ -713,18 +780,31 @@
                 </button>
             </div>
             <div class="side-panel-content">
-                <div class="side-panel-empty-state">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <path d="M12 2L2 7L12 12L22 7L12 2Z"></path>
-                        <path d="M2 17L12 22L22 17"></path>
-                        <path d="M2 12L12 17L22 12"></path>
-                    </svg>
-                    <p>Click on an assistant message to view its logit-lens visualization</p>
+                <!-- Token Predictions Section - with replay -->
+                <div class="panel-section" id="predictionsSection">
+                    <div class="section-header">
+                        <strong>Token Predictions</strong>
+                        <span class="generating-indicator" id="generatingIndicator" style="display: none;">Generating...</span>
+                    </div>
+                    <div class="predictions-scrubber" id="predictionsScrubber" style="display: none;">
+                        <input type="range" class="token-slider" id="tokenSlider" min="0" max="0" value="0">
+                        <div class="token-info" id="tokenInfo">
+                            <span class="token-position">Token 0/0</span>
+                        </div>
+                    </div>
+                    <div class="predictions-content" id="predictionsContent">
+                        <div class="predictions-empty">Generate a message to see token predictions</div>
+                    </div>
                 </div>
-                <div class="side-panel-active-content" style="display: none;">
+
+                <!-- Logit Lens Section -->
+                <div class="panel-section" id="logitLensSection">
+                    <div class="section-header">
+                        <strong>Logit Lens</strong>
+                        <span class="section-subtitle">Layer-by-layer predictions</span>
+                    </div>
                     <div class="logit-lens-info">
-                        <strong>Logit Lens:</strong> Shows what each transformer layer predicts using greedy decoding.
-                        <strong style="color: #dc2626;">Red text</strong> highlights where the layer's prediction differs from the actual sampled output.
+                        Each layer's greedy prediction. <strong style="color: #dc2626;">Red</strong> = differs from actual output.
                         <div class="sampling-params">
                             <strong>Sampling:</strong> <span id="sidePanelSamplingParams">N/A</span>
                         </div>
@@ -740,7 +820,7 @@
                         </div>
 
                         <div class="animation-controls">
-                            <button class="control-btn" id="playPauseBtn" onclick="toggleAnimation()">
+                            <button class="control-btn" id="layerPlayPauseBtn" onclick="toggleLayerAnimation()">
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
                                     <path d="M8 5v14l11-7z"></path>
                                 </svg>
@@ -753,26 +833,11 @@
                                 </svg>
                                 Reset
                             </button>
-                            <label class="speed-control">
-                                Speed: <input type="range" id="animationSpeed" min="50" max="500" value="200" step="50">
-                                <span id="speedLabel">200ms</span>
-                            </label>
                         </div>
                     </div>
 
                     <div class="logit-lens-output" id="sidePanelOutput">
-                        Select a message to view layer predictions
-                    </div>
-                </div>
-
-                <!-- Real-time predictions shown during generation -->
-                <div class="side-panel-realtime" id="realtimePredictions" style="display: none;">
-                    <div class="realtime-header">
-                        <strong>Live Predictions</strong>
-                        <span class="generating-indicator">Generating...</span>
-                    </div>
-                    <div class="realtime-content" id="realtimeContent">
-                        <!-- Top 5 predictions will appear here during generation -->
+                        Click an assistant message to view layer predictions
                     </div>
                 </div>
             </div>
@@ -810,9 +875,9 @@
         let currentTopK = 50;
         let includeLogitLens = true;
         let logitLensData = {}; // Store logit-lens data per message
-        let animationIntervals = {}; // Store animation intervals
+        let predictionHistory = {}; // Store per-token predictions per message {msgIdx: [{token, predictions: [{token, prob}]}]}
         let currentSelectedMessage = null; // Track which message is shown in side panel
-        let animationInterval = null; // Animation for side panel layer playback
+        let layerAnimationInterval = null; // Animation for layer playback
 
         chatInput.addEventListener('input', function() {
             this.style.height = 'auto';
@@ -844,84 +909,92 @@
             chatInput.style.height = 'auto';
             sendButton.disabled = false;
             isGenerating = false;
-            logitLensData = {}; // Clear logit lens data
+            logitLensData = {};
+            predictionHistory = {};
             currentSelectedMessage = null;
             // Reset side panel to collapsed state
             document.getElementById('logitLensSidePanel').classList.add('collapsed');
-            document.getElementById('realtimePredictions').style.display = 'none';
-            document.querySelector('.side-panel-empty-state').style.display = 'flex';
-            document.querySelector('.side-panel-active-content').style.display = 'none';
+            // Reset predictions section
+            document.getElementById('generatingIndicator').style.display = 'none';
+            document.getElementById('predictionsScrubber').style.display = 'none';
+            document.getElementById('predictionsContent').innerHTML = '<div class="predictions-empty">Generate a message to see token predictions</div>';
+            // Reset logit-lens section
+            document.getElementById('sidePanelOutput').textContent = 'Click an assistant message to view layer predictions';
+            document.getElementById('sidePanelSamplingParams').textContent = 'N/A';
             chatInput.focus();
         }
 
-        // Side Panel Logit-Lens Functions
+        // Side Panel Functions
 
         function selectMessageForLogitLens(messageIndex) {
-            const data = logitLensData[messageIndex];
-
             // Remove selection from previous message
             if (currentSelectedMessage !== null) {
                 const prevMessage = document.querySelector(`.message.assistant[data-message-index="${currentSelectedMessage}"]`);
-                if (prevMessage) {
-                    prevMessage.classList.remove('selected');
-                }
+                if (prevMessage) prevMessage.classList.remove('selected');
             }
 
             // Add selection to current message
             const messageDiv = document.querySelector(`.message.assistant[data-message-index="${messageIndex}"]`);
-            if (messageDiv) {
-                messageDiv.classList.add('selected');
-            }
+            if (messageDiv) messageDiv.classList.add('selected');
 
             currentSelectedMessage = messageIndex;
 
             // Show side panel
-            const sidePanel = document.getElementById('logitLensSidePanel');
-            sidePanel.classList.remove('collapsed');
+            document.getElementById('logitLensSidePanel').classList.remove('collapsed');
 
-            // Update side panel content
+            // Update predictions section
+            const preds = predictionHistory[messageIndex];
+            if (preds && preds.length > 0) {
+                document.getElementById('predictionsContent').innerHTML = '';
+                showPredictionsForToken(messageIndex, preds.length - 1);
+                document.getElementById('predictionsScrubber').style.display = 'flex';
+                document.getElementById('tokenSlider').max = preds.length - 1;
+                document.getElementById('tokenSlider').value = preds.length - 1;
+                document.getElementById('tokenInfo').innerHTML = `<span class="token-position">Token ${preds.length}/${preds.length}</span>`;
+            } else {
+                document.getElementById('predictionsContent').innerHTML = '<div class="predictions-empty">No predictions available</div>';
+                document.getElementById('predictionsScrubber').style.display = 'none';
+            }
+
+            // Update logit-lens section
+            const data = logitLensData[messageIndex];
             if (data && data.layer_texts) {
-                // Hide empty state, show active content
-                document.querySelector('.side-panel-empty-state').style.display = 'none';
-                document.querySelector('.side-panel-active-content').style.display = 'flex';
-
-                // Update sampling params
                 if (data.sampling_params) {
                     document.getElementById('sidePanelSamplingParams').textContent =
                         `Temperature: ${data.sampling_params.temperature}, Top-K: ${data.sampling_params.top_k}`;
                 }
-
-                // Clear any previous fallback warning
-                const existingWarning = document.querySelector('.fallback-warning');
-                if (existingWarning) {
-                    existingWarning.remove();
-                }
-
-                // Show fallback message if applicable
-                if (data.fallback) {
-                    const infoDiv = document.querySelector('.side-panel-active-content .logit-lens-info');
-                    const warningDiv = document.createElement('div');
-                    warningDiv.className = 'fallback-warning';
-                    warningDiv.style.cssText = 'margin-top: 6px; font-size: 11px; color: #f59e0b; font-weight: 500;';
-                    warningDiv.textContent = '⚠️ Limited mode: showing actual generated text for all layers';
-                    infoDiv.appendChild(warningDiv);
-                }
-
-                // Reset slider to final layer
                 const slider = document.getElementById('sidePanelLayerSlider');
                 slider.max = data.layer_texts.length - 1;
                 slider.value = data.layer_texts.length - 1;
-
-                // Update display
-                updateSidePanelDisplay(data.layer_texts.length - 1);
+                updateLayerDisplay(data.layer_texts.length - 1);
             } else {
-                // Show empty state if no data
-                document.querySelector('.side-panel-empty-state').style.display = 'flex';
-                document.querySelector('.side-panel-active-content').style.display = 'none';
+                document.getElementById('sidePanelOutput').textContent = 'No logit-lens data available.';
+                document.getElementById('sidePanelSamplingParams').textContent = 'N/A';
             }
         }
 
-        function updateSidePanelDisplay(layerIndex) {
+        function showPredictionsForToken(messageIndex, tokenIndex) {
+            const preds = predictionHistory[messageIndex];
+            if (!preds || !preds[tokenIndex]) return;
+
+            const tokenData = preds[tokenIndex];
+            const content = document.getElementById('predictionsContent');
+            let html = '';
+
+            tokenData.predictions.forEach((pred, idx) => {
+                const probPercent = (pred.prob * 100).toFixed(1);
+                const escapedToken = pred.token.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '↵');
+                const isSelected = idx === 0; // First one was chosen
+                html += `<div class="prediction-item ${isSelected ? 'selected-token' : ''}">
+                    <span class="token-text">'${escapedToken}'</span>
+                    <span class="token-prob">${probPercent}%</span>
+                </div>`;
+            });
+
+            content.innerHTML = html;
+        }
+
+        function updateLayerDisplay(layerIndex) {
             if (currentSelectedMessage === null) return;
 
             const data = logitLensData[currentSelectedMessage];
@@ -932,11 +1005,7 @@
 
             const layerName = data.layer_names[layerIndex];
             const layerText = data.layer_texts[layerIndex];
-
-            // Compare to actual message text instead of final layer
-            // This shows how each layer differs from what was actually generated (with sampling)
             const actualMessageText = messages[currentSelectedMessage]?.content || '';
-            const comparisonText = actualMessageText || data.layer_texts[data.layer_texts.length - 1];
 
             // Update layer info
             document.getElementById('sidePanelLayerInfo').innerHTML = `
@@ -944,117 +1013,100 @@
                 <div class="text-xs text-gray-500">${layerIndex}/${data.layer_texts.length - 1}</div>
             `;
 
-            // Create highlighted text
-            const highlightedText = createHighlightedText(layerText, comparisonText);
+            // Create highlighted text comparing this layer to actual message
+            const highlightedText = createHighlightedText(layerText, actualMessageText);
             document.getElementById('sidePanelOutput').innerHTML = highlightedText;
         }
 
-        function createHighlightedText(currentText, finalText) {
-            if (!currentText || !finalText) return currentText || '';
+        function createHighlightedText(layerText, actualText) {
+            if (!layerText) return '';
+            if (!actualText) return layerText;
 
-            const currentTokens = currentText.match(/\S+|\s+/g) || [];
-            const finalTokens = finalText.match(/\S+|\s+/g) || [];
+            const layerTokens = layerText.match(/\S+|\s+/g) || [];
+            const actualTokens = actualText.match(/\S+|\s+/g) || [];
 
-            return currentTokens.map((token, index) => {
-                const isStable = token === (finalTokens[index] || '');
-                const cssClass = isStable ? 'token-stable' : 'token-changing';
-                const escapedToken = token.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                return `<span class="${cssClass}">${escapedToken}</span>`;
+            return layerTokens.map((token, idx) => {
+                const actualToken = actualTokens[idx] || '';
+                const isMatch = token === actualToken;
+                const cssClass = isMatch ? 'token-stable' : 'token-changing';
+                const escaped = token.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return `<span class="${cssClass}">${escaped}</span>`;
             }).join('');
         }
 
         function toggleSidePanel() {
             const sidePanel = document.getElementById('logitLensSidePanel');
             sidePanel.classList.toggle('collapsed');
-
-            // Stop animation if panel is being closed
-            if (sidePanel.classList.contains('collapsed') && animationInterval) {
-                clearInterval(animationInterval);
-                animationInterval = null;
-                const playBtn = document.getElementById('playPauseBtn');
-                playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg> Play';
-                playBtn.classList.remove('active');
-            }
         }
 
-        function toggleAnimation() {
+        function toggleLayerAnimation() {
             if (currentSelectedMessage === null) return;
-
             const data = logitLensData[currentSelectedMessage];
             if (!data || !data.layer_texts) return;
 
-            const playBtn = document.getElementById('playPauseBtn');
+            const playBtn = document.getElementById('layerPlayPauseBtn');
             const slider = document.getElementById('sidePanelLayerSlider');
 
-            if (animationInterval) {
-                // Stop animation
-                clearInterval(animationInterval);
-                animationInterval = null;
+            if (layerAnimationInterval) {
+                clearInterval(layerAnimationInterval);
+                layerAnimationInterval = null;
                 playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg> Play';
                 playBtn.classList.remove('active');
             } else {
-                // Start animation
                 let currentLayer = 0;
                 const maxLayer = data.layer_texts.length - 1;
-                const speed = parseInt(document.getElementById('animationSpeed').value);
 
                 playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg> Pause';
                 playBtn.classList.add('active');
 
                 slider.value = currentLayer;
-                updateSidePanelDisplay(currentLayer);
+                updateLayerDisplay(currentLayer);
 
-                animationInterval = setInterval(() => {
+                layerAnimationInterval = setInterval(() => {
                     currentLayer++;
                     if (currentLayer > maxLayer) {
-                        clearInterval(animationInterval);
-                        animationInterval = null;
+                        clearInterval(layerAnimationInterval);
+                        layerAnimationInterval = null;
                         playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg> Play';
                         playBtn.classList.remove('active');
                     } else {
                         slider.value = currentLayer;
-                        updateSidePanelDisplay(currentLayer);
+                        updateLayerDisplay(currentLayer);
                     }
-                }, speed);
+                }, 200);
             }
         }
 
         function resetToFinalLayer() {
             if (currentSelectedMessage === null) return;
-
             const data = logitLensData[currentSelectedMessage];
             if (!data || !data.layer_texts) return;
 
-            // Stop animation
-            if (animationInterval) {
-                clearInterval(animationInterval);
-                animationInterval = null;
-                const playBtn = document.getElementById('playPauseBtn');
+            if (layerAnimationInterval) {
+                clearInterval(layerAnimationInterval);
+                layerAnimationInterval = null;
+                const playBtn = document.getElementById('layerPlayPauseBtn');
                 playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg> Play';
                 playBtn.classList.remove('active');
             }
 
-            // Reset to final layer
             const slider = document.getElementById('sidePanelLayerSlider');
             slider.value = data.layer_texts.length - 1;
-            updateSidePanelDisplay(data.layer_texts.length - 1);
+            updateLayerDisplay(data.layer_texts.length - 1);
         }
 
-        // Initialize side panel event listeners when DOM is ready
+        // Initialize side panel event listeners
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('sidePanelLayerSlider').addEventListener('input', function(e) {
-                updateSidePanelDisplay(parseInt(e.target.value));
+                updateLayerDisplay(parseInt(e.target.value));
             });
 
-            document.getElementById('animationSpeed').addEventListener('input', function(e) {
-                document.getElementById('speedLabel').textContent = e.target.value + 'ms';
-
-                // If animation is running, restart with new speed
-                if (animationInterval) {
-                    const playBtn = document.getElementById('playPauseBtn');
-                    toggleAnimation(); // Stop
-                    setTimeout(() => toggleAnimation(), 50); // Restart
-                }
+            document.getElementById('tokenSlider').addEventListener('input', function(e) {
+                if (currentSelectedMessage === null) return;
+                const tokenIdx = parseInt(e.target.value);
+                showPredictionsForToken(currentSelectedMessage, tokenIdx);
+                const preds = predictionHistory[currentSelectedMessage];
+                document.getElementById('tokenInfo').innerHTML = `<span class="token-position">Token ${tokenIdx + 1}/${preds.length}</span>`;
             });
         });
 
@@ -1132,14 +1184,21 @@
                 allMessages[i].remove();
             }
 
-            // Clear logit-lens data for removed messages
+            // Clear logit-lens and prediction data for removed messages
             for (let i = messageIndex; i < Object.keys(logitLensData).length + messageIndex; i++) {
                 delete logitLensData[i];
+                delete predictionHistory[i];
             }
             currentSelectedMessage = null;
-            document.getElementById('realtimePredictions').style.display = 'none';
-            document.querySelector('.side-panel-empty-state').style.display = 'flex';
-            document.querySelector('.side-panel-active-content').style.display = 'none';
+
+            // Reset predictions section
+            document.getElementById('generatingIndicator').style.display = 'none';
+            document.getElementById('predictionsScrubber').style.display = 'none';
+            document.getElementById('predictionsContent').innerHTML = '<div class="predictions-empty">Generate a message to see token predictions</div>';
+
+            // Reset logit-lens section
+            document.getElementById('sidePanelOutput').textContent = 'Click an assistant message to view layer predictions';
+            document.getElementById('sidePanelSamplingParams').textContent = 'N/A';
 
             // Enable send button and focus input
             sendButton.disabled = false;
@@ -1154,13 +1213,13 @@
             const assistantContent = addMessage('assistant', '', assistantMessageIndex);
             assistantContent.innerHTML = '<span class="typing-indicator"></span>';
 
-            // Show side panel with real-time predictions
-            const sidePanel = document.getElementById('logitLensSidePanel');
-            sidePanel.classList.remove('collapsed');
-            document.querySelector('.side-panel-empty-state').style.display = 'none';
-            document.querySelector('.side-panel-active-content').style.display = 'none';
-            document.getElementById('realtimePredictions').style.display = 'block';
-            document.getElementById('realtimeContent').innerHTML = '';
+            // Initialize prediction history for this message
+            predictionHistory[assistantMessageIndex] = [];
+
+            // Show side panel
+            document.getElementById('logitLensSidePanel').classList.remove('collapsed');
+            document.getElementById('generatingIndicator').style.display = 'inline';
+            document.getElementById('predictionsContent').innerHTML = '<div class="predictions-empty">Waiting for predictions...</div>';
 
             try {
                 const response = await fetch(`${API_URL}/chat/completions`, {
@@ -1204,26 +1263,21 @@
                                     assistantContent.textContent = fullResponse;
                                     chatContainer.scrollTop = chatContainer.scrollHeight;
                                 }
-                                // --- Start of new visualization handling ---
+
+                                // Store prediction data for this token
                                 if (data.viz_data) {
-                                    // Show real-time predictions in side panel
-                                    const realtimeContent = document.getElementById('realtimeContent');
-                                    let vizHtml = '';
-                                    data.viz_data.forEach(item => {
-                                        const probPercent = (item.prob * 100).toFixed(1);
-                                        const escapedToken = item.token.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '↵');
-                                        vizHtml += `<div class="prediction-item">
-                                            <span class="token-text">'${escapedToken}'</span>
-                                            <span class="token-prob">${probPercent}%</span>
-                                        </div>`;
+                                    predictionHistory[assistantMessageIndex].push({
+                                        token: data.token,
+                                        predictions: data.viz_data
                                     });
-                                    realtimeContent.innerHTML = vizHtml;
+                                    // Update display with latest predictions
+                                    showPredictionsForToken(assistantMessageIndex, predictionHistory[assistantMessageIndex].length - 1);
                                 }
-                                // --- Logit-lens data handling ---
+
+                                // Logit-lens data at end
                                 if (data.done && data.logit_lens) {
                                     receivedLogitLensData = data.logit_lens;
                                 }
-                                // --- End of new visualization handling ---
                             } catch (e) {
                             }
                         }
@@ -1232,25 +1286,41 @@
 
                 messages.push({ role: 'assistant', content: fullResponse });
 
-                // Hide real-time predictions
-                document.getElementById('realtimePredictions').style.display = 'none';
+                // Hide generating indicator
+                document.getElementById('generatingIndicator').style.display = 'none';
 
-                // Store logit-lens data if received and auto-show in side panel
+                // Store and show logit-lens data
                 if (receivedLogitLensData) {
                     logitLensData[assistantMessageIndex] = receivedLogitLensData;
-                    selectMessageForLogitLens(assistantMessageIndex);
+                }
+
+                // Enable scrubber if we have predictions
+                if (predictionHistory[assistantMessageIndex].length > 0) {
+                    document.getElementById('predictionsScrubber').style.display = 'flex';
+                    const slider = document.getElementById('tokenSlider');
+                    slider.max = predictionHistory[assistantMessageIndex].length - 1;
+                    slider.value = predictionHistory[assistantMessageIndex].length - 1;
+                    document.getElementById('tokenInfo').innerHTML = `<span class="token-position">Token ${predictionHistory[assistantMessageIndex].length}/${predictionHistory[assistantMessageIndex].length}</span>`;
+                }
+
+                // Update logit-lens section
+                if (receivedLogitLensData) {
+                    if (receivedLogitLensData.sampling_params) {
+                        document.getElementById('sidePanelSamplingParams').textContent =
+                            `Temperature: ${receivedLogitLensData.sampling_params.temperature}, Top-K: ${receivedLogitLensData.sampling_params.top_k}`;
+                    }
+                    const slider = document.getElementById('sidePanelLayerSlider');
+                    slider.max = receivedLogitLensData.layer_texts.length - 1;
+                    slider.value = receivedLogitLensData.layer_texts.length - 1;
+                    updateLayerDisplay(receivedLogitLensData.layer_texts.length - 1);
                 } else {
-                    // No logit-lens data, show empty state
-                    document.querySelector('.side-panel-empty-state').style.display = 'flex';
-                    document.querySelector('.side-panel-active-content').style.display = 'none';
+                    document.getElementById('sidePanelOutput').textContent = 'No logit-lens data available.';
                 }
 
             } catch (error) {
                 console.error('Error:', error);
                 assistantContent.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
-                // Hide real-time predictions on error
-                document.getElementById('realtimePredictions').style.display = 'none';
-                document.querySelector('.side-panel-empty-state').style.display = 'flex';
+                document.getElementById('generatingIndicator').style.display = 'none';
             } finally {
                 isGenerating = false;
                 sendButton.disabled = !chatInput.value.trim();
