@@ -157,6 +157,11 @@ class ChatRequest(BaseModel):
     temperature: Optional[float] = None
     max_tokens: Optional[int] = None
     top_k: Optional[int] = None
+    include_logit_lens: Optional[bool] = False
+
+class LogitLensRequest(BaseModel):
+    text: str
+    max_tokens: Optional[int] = 128
 
 def validate_chat_request(request: ChatRequest):
     """Validate chat request to prevent abuse."""
@@ -260,12 +265,94 @@ async def logo():
     logo_path = os.path.join("nanochat", "logo.svg")
     return FileResponse(logo_path, media_type="image/svg+xml")
 
+@app.post("/logit-lens")
+async def logit_lens(request: LogitLensRequest):
+    """
+    Logit-lens endpoint that returns hidden states and decoded text for each layer.
+    Enables real-time exploration of emergent reasoning across transformer layers.
+    """
+    if len(request.text.strip()) == 0:
+        raise HTTPException(status_code=400, detail="Text cannot be empty")
+    if len(request.text) > 1000:
+        raise HTTPException(status_code=400, detail="Text too long (max 1000 characters)")
+
+    worker_pool = app.state.worker_pool
+    worker = await worker_pool.acquire_worker()
+
+    try:
+        # Tokenize input text
+        tokens = worker.tokenizer.encode(request.text)
+        if len(tokens) > request.max_tokens:
+            tokens = tokens[:request.max_tokens]
+
+        # Convert to tensor
+        input_tensor = torch.tensor([tokens], dtype=torch.long, device=worker.device)
+
+        with worker.autocast_ctx:
+            # Forward pass with hidden state capture
+            logits, hidden_states = worker.engine.model.forward(
+                input_tensor,
+                capture_hidden_states=True
+            )
+
+            # Decode hidden states through lm_head for each layer
+            layer_logits = worker.engine.model.decode_hidden_states(hidden_states)
+
+            # Convert to greedy decoded tokens for each layer
+            layer_texts = []
+            token_info = []
+
+            for layer_idx, layer_logit in enumerate(layer_logits):
+                # Greedy decoding (argmax) for each position
+                decoded_tokens = torch.argmax(layer_logit, dim=-1)[0].tolist()  # Remove batch dim
+                layer_text = worker.tokenizer.decode(decoded_tokens)
+                layer_texts.append(layer_text)
+
+                # Get top-3 tokens for each position
+                layer_token_info = []
+                for pos_idx in range(len(decoded_tokens)):
+                    pos_logits = layer_logit[0, pos_idx, :]  # Remove batch dim
+                    top_probs, top_indices = torch.topk(F.softmax(pos_logits, dim=-1), 3)
+
+                    top_tokens = []
+                    for prob, idx in zip(top_probs, top_indices):
+                        token_str = worker.tokenizer.decode([idx.item()])
+                        top_tokens.append({
+                            "token": token_str.replace('\n', '\\n').replace('\t', '\\t'),
+                            "prob": prob.item(),
+                            "id": idx.item()
+                        })
+
+                    layer_token_info.append(top_tokens)
+
+                token_info.append(layer_token_info)
+
+            # Calculate final output (last layer)
+            final_logits = layer_logits[-1]
+            final_tokens = torch.argmax(final_logits, dim=-1)[0].tolist()
+            final_text = worker.tokenizer.decode(final_tokens)
+
+            return {
+                "input_text": request.text,
+                "input_tokens": tokens,
+                "final_text": final_text,
+                "final_tokens": final_tokens,
+                "num_layers": len(layer_texts),
+                "layer_texts": layer_texts,
+                "token_info": token_info,
+                "layer_names": ["embedding"] + [f"layer_{i}" for i in range(len(layer_texts)-1)]
+            }
+
+    finally:
+        await worker_pool.release_worker(worker)
+
 async def generate_stream(
     worker: Worker,
     tokens,
     temperature=None,
     max_new_tokens=None,
-    top_k=None
+    top_k=None,
+    include_logit_lens=False
 ) -> AsyncGenerator[str, None]:
     """Generate assistant response with streaming."""
     temperature = temperature if temperature is not None else args.temperature
@@ -329,7 +416,83 @@ async def generate_stream(
                     yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
                     last_clean_text = current_text
 
-    yield f"data: {json.dumps({'done': True})}\n\n"
+    # After generation is complete, capture logit-lens data if requested
+    logit_lens_data = None
+    if include_logit_lens and accumulated_tokens:
+        try:
+            # Create input tensor with full conversation + generated response
+            full_tokens = tokens + accumulated_tokens
+            input_tensor = torch.tensor([full_tokens], dtype=torch.long, device=worker.device)
+
+            # Forward pass with hidden state capture
+            with worker.autocast_ctx:
+                logits, hidden_states = worker.engine.model.forward(
+                    input_tensor,
+                    capture_hidden_states=True
+                )
+
+                # Decode hidden states through lm_head for each layer
+                layer_logits = worker.engine.model.decode_hidden_states(hidden_states)
+
+                # Convert to greedy decoded tokens for each layer (only for generated part)
+                layer_texts = []
+                token_info = []
+                start_idx = len(tokens)  # Start from generated tokens
+
+                for layer_idx, layer_logit in enumerate(layer_logits):
+                    # Get tokens for generated part only
+                    generated_logits = layer_logit[0, start_idx:start_idx + len(accumulated_tokens), :]
+
+                    # Greedy decoding for logit-lens (shows what each layer would predict)
+                    decoded_tokens = torch.argmax(generated_logits, dim=-1).tolist()
+                    layer_text = worker.tokenizer.decode(decoded_tokens, skip_special_tokens=True)
+                    layer_texts.append(layer_text)
+
+                    # Get top-3 tokens for each position in generated part
+                    layer_token_info = []
+                    for pos_idx in range(generated_logits.size(0)):
+                        pos_logits = generated_logits[pos_idx, :]
+                        top_probs, top_indices = torch.topk(F.softmax(pos_logits, dim=-1), 3)
+
+                        top_tokens = []
+                        for prob, idx in zip(top_probs, top_indices):
+                            token_str = worker.tokenizer.decode([idx.item()])
+                            top_tokens.append({
+                                "token": token_str.replace('\n', '\\n').replace('\t', '\\t'),
+                                "prob": prob.item(),
+                                "id": idx.item()
+                            })
+                        layer_token_info.append(top_tokens)
+
+                    token_info.append(layer_token_info)
+
+                logit_lens_data = {
+                    "input_tokens": tokens,
+                    "generated_tokens": accumulated_tokens,
+                    "layer_texts": layer_texts,
+                    "token_info": token_info,
+                    "layer_names": ["embedding"] + [f"layer_{i}" for i in range(len(layer_texts)-1)],
+                    "final_text": current_text,
+                    "actual_generated_text": current_text,
+                    "decoding_method": "greedy",
+                    "sampling_params": {
+                        "temperature": temperature,
+                        "top_k": top_k
+                    }
+                }
+        except Exception as e:
+            import traceback
+            print(f"Error capturing logit-lens: {e}")
+            print(f"Traceback: {traceback.format_exc()}")
+
+            # Don't use fallback - let the UI show that logit-lens failed
+            logit_lens_data = None
+
+    # Create the final response payload
+    final_payload = {'done': True, 'logit_lens': logit_lens_data}
+    final_json = json.dumps(final_payload, ensure_ascii=False)
+
+    yield f"data: {final_json}\n\n"
 
 @app.post("/chat/completions")
 async def chat_completions(request: ChatRequest):
@@ -378,7 +541,8 @@ async def chat_completions(request: ChatRequest):
                     conversation_tokens,
                     temperature=request.temperature,
                     max_new_tokens=request.max_tokens,
-                    top_k=request.top_k
+                    top_k=request.top_k,
+                    include_logit_lens=request.include_logit_lens
                 ):
                     # Accumulate response for logging
                     chunk_data = json.loads(chunk.replace("data: ", "").strip())

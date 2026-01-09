@@ -24,6 +24,13 @@
             flex-direction: column;
         }
 
+        .main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+
         .header {
             background-color: #ffffff;
             padding: 1.25rem 1.5rem;
@@ -47,6 +54,7 @@
             color: #111827;
         }
 
+    
         .new-conversation-btn {
             width: 32px;
             height: 32px;
@@ -72,6 +80,11 @@
             flex: 1;
             overflow-y: auto;
             background-color: #ffffff;
+            transition: margin-right 0.3s ease;
+        }
+
+        .chat-container.panel-open {
+            margin-right: 0;
         }
 
         .chat-wrapper {
@@ -104,6 +117,10 @@
             max-width: 100%;
         }
 
+        .message.assistant {
+            position: relative;
+        }
+
         .message.assistant .message-content {
             background: transparent;
             border: none;
@@ -113,6 +130,160 @@
             padding: 0.5rem;
             margin-left: -0.5rem;
             transition: background-color 0.2s ease;
+        }
+
+        .logit-lens-toggle {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            width: 28px;
+            height: 28px;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            background-color: #ffffff;
+            color: #6b7280;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+            opacity: 0;
+        }
+
+        .message.assistant:hover .logit-lens-toggle {
+            opacity: 1;
+        }
+
+        .logit-lens-toggle:hover {
+            background-color: #f3f4f6;
+            border-color: #d1d5db;
+            color: #374151;
+        }
+
+        .logit-lens-toggle.active {
+            opacity: 1;
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+            color: #ffffff;
+        }
+
+        .logit-lens-panel {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            display: none;
+            min-height: 200px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
+        .logit-lens-panel.active {
+            display: block;
+        }
+
+        .layer-scrubber {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .layer-slider {
+            flex: 1;
+            height: 6px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #e5e7eb;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        .layer-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .layer-slider::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .layer-info {
+            min-width: 80px;
+            text-align: center;
+            font-size: 0.875rem;
+            color: #374151;
+        }
+
+        .logit-lens-output {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'Courier New', monospace;
+            font-size: 0.875rem;
+            line-height: 1.5;
+            padding: 0.75rem;
+            background-color: #ffffff;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.375rem;
+            white-space: pre-wrap;
+            word-break: break-all;
+            min-height: 80px;
+            max-height: 120px;
+            overflow-y: auto;
+            box-sizing: border-box;
+            resize: none;
+        }
+
+        .token-stable {
+            color: #6b7280;
+        }
+
+        .token-changing {
+            color: #dc2626;
+            font-weight: 600;
+        }
+
+        .logit-lens-controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+        }
+
+        .logit-lens-btn {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.75rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.375rem;
+            background-color: #ffffff;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .logit-lens-btn:hover {
+            background-color: #f3f4f6;
+            border-color: #9ca3af;
+        }
+
+        .logit-lens-btn.active {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+            color: #ffffff;
+        }
+
+        .logit-lens-toggle-container {
+            padding: 0.75rem 1rem 0.5rem;
+            border-top: 1px solid #f3f4f6;
+            margin-top: 0.5rem;
         }
 
         .message.assistant .message-content:hover {
@@ -154,35 +325,6 @@
             display: flex;
             gap: 0.75rem;
             align-items: flex-end;
-        }
-
-        .viz-container {
-            position: absolute;
-            bottom: calc(100% + 1rem); /* Position it above the input area */
-            right: 0;
-            width: 300px;
-            background-color: #f9fafb;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.75rem;
-            padding: 0.75rem;
-            font-family: 'Monaco', 'Menlo', monospace;
-            font-size: 0.8rem;
-            color: #4b5563;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            opacity: 0;
-            transition: opacity 0.3s ease;
-            pointer-events: none;
-        }
-
-        .viz-container.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
-
-        .viz-container pre {
-            margin: 0;
-            white-space: pre-wrap;
-            word-break: break-all;
         }
 
         .chat-input {
@@ -262,6 +404,350 @@
             border-radius: 0.75rem;
             margin-top: 0.5rem;
         }
+
+        /* Side Panel Styles */
+        .logit-lens-side-panel {
+            width: 450px;
+            min-width: 450px;
+            max-width: 450px;
+            background-color: #f9fafb;
+            border-left: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            transition: margin-right 0.3s ease, opacity 0.3s ease;
+            z-index: 10;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .logit-lens-side-panel.collapsed {
+            margin-right: -450px;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .side-panel-header {
+            padding: 1rem 1.25rem;
+            background-color: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .side-panel-header h3 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .collapse-btn {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            background-color: #ffffff;
+            color: #6b7280;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .collapse-btn:hover {
+            background-color: #f3f4f6;
+            border-color: #d1d5db;
+            color: #374151;
+        }
+
+        .collapse-btn svg {
+            transition: transform 0.3s ease;
+        }
+
+        .logit-lens-side-panel:not(.collapsed) .collapse-btn svg {
+            transform: rotate(180deg);
+        }
+
+        .side-panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.25rem;
+        }
+
+        .side-panel-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 3rem 2rem;
+            color: #9ca3af;
+        }
+
+        .side-panel-empty-state svg {
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .side-panel-empty-state p {
+            margin: 0;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .side-panel-active-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .logit-lens-info {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            font-size: 0.8125rem;
+            line-height: 1.5;
+            color: #64748b;
+        }
+
+        .logit-lens-info strong {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .sampling-params {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #f1f5f9;
+            font-size: 0.75rem;
+        }
+
+        .layer-controls {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+        }
+
+        .animation-controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-btn {
+            padding: 0.5rem 0.875rem;
+            font-size: 0.8125rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            background-color: #ffffff;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-weight: 500;
+        }
+
+        .control-btn:hover {
+            background-color: #f9fafb;
+            border-color: #9ca3af;
+        }
+
+        .control-btn.active {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+            color: #ffffff;
+        }
+
+        .control-btn svg {
+            flex-shrink: 0;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-left: auto;
+        }
+
+        .speed-control input[type="range"] {
+            width: 80px;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #e5e7eb;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .speed-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .speed-control input[type="range"]::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .speed-control span {
+            min-width: 45px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        #sidePanelOutput {
+            background: #fff;
+            min-height: 200px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .message.assistant.selected .message-content {
+            background-color: #eff6ff;
+            border-left: 3px solid #3b82f6;
+            padding-left: calc(1rem - 3px);
+        }
+
+        /* Panel Sections */
+        .panel-section {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 1rem;
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+            font-size: 0.875rem;
+        }
+
+        .section-subtitle {
+            color: #9ca3af;
+            font-size: 0.75rem;
+        }
+
+        .generating-indicator {
+            color: #3b82f6;
+            font-size: 0.75rem;
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        /* Token Predictions Section */
+        .predictions-scrubber {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .token-slider {
+            flex: 1;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #e5e7eb;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .token-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #8b5cf6;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .token-slider::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            background: #8b5cf6;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .token-info {
+            font-size: 0.75rem;
+            color: #6b7280;
+            min-width: 70px;
+            text-align: right;
+        }
+
+        .predictions-content {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'Courier New', monospace;
+            font-size: 0.8rem;
+            line-height: 1.6;
+        }
+
+        .predictions-empty {
+            color: #9ca3af;
+            text-align: center;
+            padding: 1rem;
+            font-family: inherit;
+            font-size: 0.8125rem;
+        }
+
+        .prediction-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.375rem 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .prediction-item:last-child {
+            border-bottom: none;
+        }
+
+        .prediction-item .token-text {
+            font-weight: 500;
+            color: #1e293b;
+        }
+
+        .prediction-item .token-prob {
+            color: #64748b;
+            font-size: 0.75rem;
+        }
+
+        .prediction-item.selected-token {
+            background: #fef3c7;
+            margin: 0 -0.5rem;
+            padding: 0.375rem 0.5rem;
+            border-radius: 0.25rem;
+        }
     </style>
 </head>
 <body>
@@ -277,15 +763,88 @@
         </div>
     </div>
 
-    <div class="chat-container" id="chatContainer">
-        <div class="chat-wrapper" id="chatWrapper">
-            <!-- Messages will be added here -->
+    <div class="main-container">
+        <div class="chat-container" id="chatContainer">
+            <div class="chat-wrapper" id="chatWrapper">
+                <!-- Messages will be added here -->
+            </div>
+        </div>
+
+        <div class="logit-lens-side-panel collapsed" id="logitLensSidePanel">
+            <div class="side-panel-header">
+                <h3>Logit Lens Explorer</h3>
+                <button class="collapse-btn" onclick="toggleSidePanel()" title="Toggle panel">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+            </div>
+            <div class="side-panel-content">
+                <!-- Token Predictions Section - with replay -->
+                <div class="panel-section" id="predictionsSection">
+                    <div class="section-header">
+                        <strong>Token Predictions</strong>
+                        <span class="generating-indicator" id="generatingIndicator" style="display: none;">Generating...</span>
+                    </div>
+                    <div class="predictions-scrubber" id="predictionsScrubber" style="display: none;">
+                        <input type="range" class="token-slider" id="tokenSlider" min="0" max="0" value="0">
+                        <div class="token-info" id="tokenInfo">
+                            <span class="token-position">Token 0/0</span>
+                        </div>
+                    </div>
+                    <div class="predictions-content" id="predictionsContent">
+                        <div class="predictions-empty">Generate a message to see token predictions</div>
+                    </div>
+                </div>
+
+                <!-- Logit Lens Section -->
+                <div class="panel-section" id="logitLensSection">
+                    <div class="section-header">
+                        <strong>Logit Lens</strong>
+                        <span class="section-subtitle">Layer-by-layer predictions</span>
+                    </div>
+                    <div class="logit-lens-info">
+                        Each layer's greedy prediction. <strong style="color: #dc2626;">Red</strong> = differs from actual output.
+                        <div class="sampling-params">
+                            <strong>Sampling:</strong> <span id="sidePanelSamplingParams">N/A</span>
+                        </div>
+                    </div>
+
+                    <div class="layer-controls">
+                        <div class="layer-scrubber">
+                            <input type="range" class="layer-slider" id="sidePanelLayerSlider" min="0" max="32" value="32">
+                            <div class="layer-info" id="sidePanelLayerInfo">
+                                <div class="font-semibold">Layer 32</div>
+                                <div class="text-xs text-gray-500">final</div>
+                            </div>
+                        </div>
+
+                        <div class="animation-controls">
+                            <button class="control-btn" id="layerPlayPauseBtn" onclick="toggleLayerAnimation()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M8 5v14l11-7z"></path>
+                                </svg>
+                                Play
+                            </button>
+                            <button class="control-btn" onclick="resetToFinalLayer()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                                Reset
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="logit-lens-output" id="sidePanelOutput">
+                        Click an assistant message to view layer predictions
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
     <div class="input-container">
-        <!-- Add the new visualization container here -->
-        <div id="vizContainer" class="viz-container"></div>
         <div class="input-wrapper">
             <textarea
                 id="chatInput"
@@ -309,12 +868,16 @@
         const chatWrapper = document.getElementById('chatWrapper');
         const chatInput = document.getElementById('chatInput');
         const sendButton = document.getElementById('sendButton');
-        const vizContainer = document.getElementById('vizContainer');
 
         let messages = [];
         let isGenerating = false;
         let currentTemperature = 0.8;
         let currentTopK = 50;
+        let includeLogitLens = true;
+        let logitLensData = {}; // Store logit-lens data per message
+        let predictionHistory = {}; // Store per-token predictions per message {msgIdx: [{token, predictions: [{token, prob}]}]}
+        let currentSelectedMessage = null; // Track which message is shown in side panel
+        let layerAnimationInterval = null; // Animation for layer playback
 
         chatInput.addEventListener('input', function() {
             this.style.height = 'auto';
@@ -346,11 +909,208 @@
             chatInput.style.height = 'auto';
             sendButton.disabled = false;
             isGenerating = false;
-            vizContainer.classList.remove('visible'); // Hide visualization
-            vizContainer.innerHTML = ''; // Clear it
+            logitLensData = {};
+            predictionHistory = {};
+            currentSelectedMessage = null;
+            // Reset side panel to collapsed state
+            document.getElementById('logitLensSidePanel').classList.add('collapsed');
+            // Reset predictions section
+            document.getElementById('generatingIndicator').style.display = 'none';
+            document.getElementById('predictionsScrubber').style.display = 'none';
+            document.getElementById('predictionsContent').innerHTML = '<div class="predictions-empty">Generate a message to see token predictions</div>';
+            // Reset logit-lens section
+            document.getElementById('sidePanelOutput').textContent = 'Click an assistant message to view layer predictions';
+            document.getElementById('sidePanelSamplingParams').textContent = 'N/A';
             chatInput.focus();
         }
 
+        // Side Panel Functions
+
+        function selectMessageForLogitLens(messageIndex) {
+            // Remove selection from previous message
+            if (currentSelectedMessage !== null) {
+                const prevMessage = document.querySelector(`.message.assistant[data-message-index="${currentSelectedMessage}"]`);
+                if (prevMessage) prevMessage.classList.remove('selected');
+            }
+
+            // Add selection to current message
+            const messageDiv = document.querySelector(`.message.assistant[data-message-index="${messageIndex}"]`);
+            if (messageDiv) messageDiv.classList.add('selected');
+
+            currentSelectedMessage = messageIndex;
+
+            // Show side panel
+            document.getElementById('logitLensSidePanel').classList.remove('collapsed');
+
+            // Update predictions section
+            const preds = predictionHistory[messageIndex];
+            if (preds && preds.length > 0) {
+                document.getElementById('predictionsContent').innerHTML = '';
+                showPredictionsForToken(messageIndex, preds.length - 1);
+                document.getElementById('predictionsScrubber').style.display = 'flex';
+                document.getElementById('tokenSlider').max = preds.length - 1;
+                document.getElementById('tokenSlider').value = preds.length - 1;
+                document.getElementById('tokenInfo').innerHTML = `<span class="token-position">Token ${preds.length}/${preds.length}</span>`;
+            } else {
+                document.getElementById('predictionsContent').innerHTML = '<div class="predictions-empty">No predictions available</div>';
+                document.getElementById('predictionsScrubber').style.display = 'none';
+            }
+
+            // Update logit-lens section
+            const data = logitLensData[messageIndex];
+            if (data && data.layer_texts) {
+                if (data.sampling_params) {
+                    document.getElementById('sidePanelSamplingParams').textContent =
+                        `Temperature: ${data.sampling_params.temperature}, Top-K: ${data.sampling_params.top_k}`;
+                }
+                const slider = document.getElementById('sidePanelLayerSlider');
+                slider.max = data.layer_texts.length - 1;
+                slider.value = data.layer_texts.length - 1;
+                updateLayerDisplay(data.layer_texts.length - 1);
+            } else {
+                document.getElementById('sidePanelOutput').textContent = 'No logit-lens data available.';
+                document.getElementById('sidePanelSamplingParams').textContent = 'N/A';
+            }
+        }
+
+        function showPredictionsForToken(messageIndex, tokenIndex) {
+            const preds = predictionHistory[messageIndex];
+            if (!preds || !preds[tokenIndex]) return;
+
+            const tokenData = preds[tokenIndex];
+            const content = document.getElementById('predictionsContent');
+            let html = '';
+
+            tokenData.predictions.forEach((pred, idx) => {
+                const probPercent = (pred.prob * 100).toFixed(1);
+                const escapedToken = pred.token.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '↵');
+                const isSelected = idx === 0; // First one was chosen
+                html += `<div class="prediction-item ${isSelected ? 'selected-token' : ''}">
+                    <span class="token-text">'${escapedToken}'</span>
+                    <span class="token-prob">${probPercent}%</span>
+                </div>`;
+            });
+
+            content.innerHTML = html;
+        }
+
+        function updateLayerDisplay(layerIndex) {
+            if (currentSelectedMessage === null) return;
+
+            const data = logitLensData[currentSelectedMessage];
+            if (!data || !data.layer_texts || layerIndex >= data.layer_texts.length) {
+                document.getElementById('sidePanelOutput').textContent = 'No data available for this layer.';
+                return;
+            }
+
+            const layerName = data.layer_names[layerIndex];
+            const layerText = data.layer_texts[layerIndex];
+            const actualMessageText = messages[currentSelectedMessage]?.content || '';
+
+            // Update layer info
+            document.getElementById('sidePanelLayerInfo').innerHTML = `
+                <div class="font-semibold">${layerName}</div>
+                <div class="text-xs text-gray-500">${layerIndex}/${data.layer_texts.length - 1}</div>
+            `;
+
+            // Create highlighted text comparing this layer to actual message
+            const highlightedText = createHighlightedText(layerText, actualMessageText);
+            document.getElementById('sidePanelOutput').innerHTML = highlightedText;
+        }
+
+        function createHighlightedText(layerText, actualText) {
+            if (!layerText) return '';
+            if (!actualText) return layerText;
+
+            const layerTokens = layerText.match(/\S+|\s+/g) || [];
+            const actualTokens = actualText.match(/\S+|\s+/g) || [];
+
+            return layerTokens.map((token, idx) => {
+                const actualToken = actualTokens[idx] || '';
+                const isMatch = token === actualToken;
+                const cssClass = isMatch ? 'token-stable' : 'token-changing';
+                const escaped = token.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return `<span class="${cssClass}">${escaped}</span>`;
+            }).join('');
+        }
+
+        function toggleSidePanel() {
+            const sidePanel = document.getElementById('logitLensSidePanel');
+            sidePanel.classList.toggle('collapsed');
+        }
+
+        function toggleLayerAnimation() {
+            if (currentSelectedMessage === null) return;
+            const data = logitLensData[currentSelectedMessage];
+            if (!data || !data.layer_texts) return;
+
+            const playBtn = document.getElementById('layerPlayPauseBtn');
+            const slider = document.getElementById('sidePanelLayerSlider');
+
+            if (layerAnimationInterval) {
+                clearInterval(layerAnimationInterval);
+                layerAnimationInterval = null;
+                playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg> Play';
+                playBtn.classList.remove('active');
+            } else {
+                let currentLayer = 0;
+                const maxLayer = data.layer_texts.length - 1;
+
+                playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg> Pause';
+                playBtn.classList.add('active');
+
+                slider.value = currentLayer;
+                updateLayerDisplay(currentLayer);
+
+                layerAnimationInterval = setInterval(() => {
+                    currentLayer++;
+                    if (currentLayer > maxLayer) {
+                        clearInterval(layerAnimationInterval);
+                        layerAnimationInterval = null;
+                        playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg> Play';
+                        playBtn.classList.remove('active');
+                    } else {
+                        slider.value = currentLayer;
+                        updateLayerDisplay(currentLayer);
+                    }
+                }, 200);
+            }
+        }
+
+        function resetToFinalLayer() {
+            if (currentSelectedMessage === null) return;
+            const data = logitLensData[currentSelectedMessage];
+            if (!data || !data.layer_texts) return;
+
+            if (layerAnimationInterval) {
+                clearInterval(layerAnimationInterval);
+                layerAnimationInterval = null;
+                const playBtn = document.getElementById('layerPlayPauseBtn');
+                playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg> Play';
+                playBtn.classList.remove('active');
+            }
+
+            const slider = document.getElementById('sidePanelLayerSlider');
+            slider.value = data.layer_texts.length - 1;
+            updateLayerDisplay(data.layer_texts.length - 1);
+        }
+
+        // Initialize side panel event listeners
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('sidePanelLayerSlider').addEventListener('input', function(e) {
+                updateLayerDisplay(parseInt(e.target.value));
+            });
+
+            document.getElementById('tokenSlider').addEventListener('input', function(e) {
+                if (currentSelectedMessage === null) return;
+                const tokenIdx = parseInt(e.target.value);
+                showPredictionsForToken(currentSelectedMessage, tokenIdx);
+                const preds = predictionHistory[currentSelectedMessage];
+                document.getElementById('tokenInfo').innerHTML = `<span class="token-position">Token ${tokenIdx + 1}/${preds.length}</span>`;
+            });
+        });
+
+        
         function addMessage(role, content, messageIndex = null) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role}`;
@@ -370,11 +1130,26 @@
                 });
             }
 
-            // Add click handler for assistant messages to enable regeneration
+            // Add click handler for assistant messages to show logit-lens
             if (role === 'assistant' && messageIndex !== null) {
+                messageDiv.setAttribute('data-message-index', messageIndex);
                 contentDiv.setAttribute('data-message-index', messageIndex);
-                contentDiv.setAttribute('title', 'Click to regenerate this response');
-                contentDiv.addEventListener('click', function() {
+
+                contentDiv.addEventListener('click', function(e) {
+                    if (!isGenerating) {
+                        // Right-click or ctrl+click for regeneration
+                        if (e.ctrlKey || e.metaKey || e.button === 2) {
+                            regenerateMessage(messageIndex);
+                        } else {
+                            // Left-click to show logit-lens
+                            selectMessageForLogitLens(messageIndex);
+                        }
+                    }
+                });
+
+                // Add context menu for regeneration
+                contentDiv.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
                     if (!isGenerating) {
                         regenerateMessage(messageIndex);
                     }
@@ -409,8 +1184,21 @@
                 allMessages[i].remove();
             }
 
-            vizContainer.classList.remove('visible'); // Hide visualization
-            vizContainer.innerHTML = ''; // Clear it
+            // Clear logit-lens and prediction data for removed messages
+            for (let i = messageIndex; i < Object.keys(logitLensData).length + messageIndex; i++) {
+                delete logitLensData[i];
+                delete predictionHistory[i];
+            }
+            currentSelectedMessage = null;
+
+            // Reset predictions section
+            document.getElementById('generatingIndicator').style.display = 'none';
+            document.getElementById('predictionsScrubber').style.display = 'none';
+            document.getElementById('predictionsContent').innerHTML = '<div class="predictions-empty">Generate a message to see token predictions</div>';
+
+            // Reset logit-lens section
+            document.getElementById('sidePanelOutput').textContent = 'Click an assistant message to view layer predictions';
+            document.getElementById('sidePanelSamplingParams').textContent = 'N/A';
 
             // Enable send button and focus input
             sendButton.disabled = false;
@@ -421,9 +1209,17 @@
             isGenerating = true;
             sendButton.disabled = true;
 
-            const assistantContent = addMessage('assistant', '');
+            const assistantMessageIndex = messages.length;
+            const assistantContent = addMessage('assistant', '', assistantMessageIndex);
             assistantContent.innerHTML = '<span class="typing-indicator"></span>';
-            vizContainer.classList.add('visible'); // Show visualization container
+
+            // Initialize prediction history for this message
+            predictionHistory[assistantMessageIndex] = [];
+
+            // Show side panel
+            document.getElementById('logitLensSidePanel').classList.remove('collapsed');
+            document.getElementById('generatingIndicator').style.display = 'inline';
+            document.getElementById('predictionsContent').innerHTML = '<div class="predictions-empty">Waiting for predictions...</div>';
 
             try {
                 const response = await fetch(`${API_URL}/chat/completions`, {
@@ -435,7 +1231,8 @@
                         messages: messages,
                         temperature: currentTemperature,
                         top_k: currentTopK,
-                        max_tokens: 512
+                        max_tokens: 512,
+                        include_logit_lens: includeLogitLens
                     }),
                 });
 
@@ -446,6 +1243,7 @@
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
                 let fullResponse = '';
+                let receivedLogitLensData = null;
                 assistantContent.textContent = '';
 
                 while (true) {
@@ -459,50 +1257,73 @@
                         if (line.startsWith('data: ')) {
                             try {
                                 const data = JSON.parse(line.slice(6));
+
                                 if (data.token) {
                                     fullResponse += data.token;
                                     assistantContent.textContent = fullResponse;
                                     chatContainer.scrollTop = chatContainer.scrollHeight;
                                 }
-                                // --- Start of new visualization handling ---
+
+                                // Store prediction data for this token
                                 if (data.viz_data) {
-                                    let vizHtml = '<strong>Top 5 Next Token Predictions:</strong>\n';
-                                    data.viz_data.forEach(item => {
-                                        const probPercent = (item.prob * 100).toFixed(2);
-                                        // Use textContent to prevent any potential HTML injection from token strings
-                                        const pre = document.createElement('pre');
-                                        pre.textContent = `${probPercent.padStart(6, ' ')}% | '${item.token}'`;
-                                        vizHtml += pre.outerHTML;
+                                    predictionHistory[assistantMessageIndex].push({
+                                        token: data.token,
+                                        predictions: data.viz_data
                                     });
-                                    vizContainer.innerHTML = vizHtml;
+                                    // Update display with latest predictions
+                                    showPredictionsForToken(assistantMessageIndex, predictionHistory[assistantMessageIndex].length - 1);
                                 }
-                                // --- End of new visualization handling ---
+
+                                // Logit-lens data at end
+                                if (data.done && data.logit_lens) {
+                                    receivedLogitLensData = data.logit_lens;
+                                }
                             } catch (e) {
                             }
                         }
                     }
                 }
 
-                const assistantMessageIndex = messages.length;
                 messages.push({ role: 'assistant', content: fullResponse });
 
-                // Add click handler to regenerate this assistant message
-                assistantContent.setAttribute('data-message-index', assistantMessageIndex);
-                assistantContent.setAttribute('title', 'Click to regenerate this response');
-                assistantContent.addEventListener('click', function() {
-                    if (!isGenerating) {
-                        regenerateMessage(assistantMessageIndex);
+                // Hide generating indicator
+                document.getElementById('generatingIndicator').style.display = 'none';
+
+                // Store and show logit-lens data
+                if (receivedLogitLensData) {
+                    logitLensData[assistantMessageIndex] = receivedLogitLensData;
+                }
+
+                // Enable scrubber if we have predictions
+                if (predictionHistory[assistantMessageIndex].length > 0) {
+                    document.getElementById('predictionsScrubber').style.display = 'flex';
+                    const slider = document.getElementById('tokenSlider');
+                    slider.max = predictionHistory[assistantMessageIndex].length - 1;
+                    slider.value = predictionHistory[assistantMessageIndex].length - 1;
+                    document.getElementById('tokenInfo').innerHTML = `<span class="token-position">Token ${predictionHistory[assistantMessageIndex].length}/${predictionHistory[assistantMessageIndex].length}</span>`;
+                }
+
+                // Update logit-lens section
+                if (receivedLogitLensData) {
+                    if (receivedLogitLensData.sampling_params) {
+                        document.getElementById('sidePanelSamplingParams').textContent =
+                            `Temperature: ${receivedLogitLensData.sampling_params.temperature}, Top-K: ${receivedLogitLensData.sampling_params.top_k}`;
                     }
-                });
+                    const slider = document.getElementById('sidePanelLayerSlider');
+                    slider.max = receivedLogitLensData.layer_texts.length - 1;
+                    slider.value = receivedLogitLensData.layer_texts.length - 1;
+                    updateLayerDisplay(receivedLogitLensData.layer_texts.length - 1);
+                } else {
+                    document.getElementById('sidePanelOutput').textContent = 'No logit-lens data available.';
+                }
 
             } catch (error) {
                 console.error('Error:', error);
                 assistantContent.innerHTML = `<div class="error-message">Error: ${error.message}</div>`;
+                document.getElementById('generatingIndicator').style.display = 'none';
             } finally {
                 isGenerating = false;
                 sendButton.disabled = !chatInput.value.trim();
-                // Optionally hide the visualization after generation is complete
-                // setTimeout(() => vizContainer.classList.remove('visible'), 3000);
             }
         }
 
