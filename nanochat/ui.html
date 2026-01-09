@@ -437,17 +437,22 @@
         /* Side Panel Styles */
         .logit-lens-side-panel {
             width: 450px;
+            min-width: 450px;
+            max-width: 450px;
             background-color: #f9fafb;
             border-left: 1px solid #e5e7eb;
             display: flex;
             flex-direction: column;
-            transition: transform 0.3s ease, width 0.3s ease;
+            transition: margin-right 0.3s ease, opacity 0.3s ease;
             z-index: 10;
+            height: 100%;
+            overflow: hidden;
         }
 
         .logit-lens-side-panel.collapsed {
-            transform: translateX(450px);
-            width: 0;
+            margin-right: -450px;
+            opacity: 0;
+            pointer-events: none;
         }
 
         .side-panel-header {
@@ -491,7 +496,7 @@
             transition: transform 0.3s ease;
         }
 
-        .logit-lens-side-panel.collapsed .collapse-btn svg {
+        .logit-lens-side-panel:not(.collapsed) .collapse-btn svg {
             transform: rotate(180deg);
         }
 
@@ -641,9 +646,9 @@
 
         #sidePanelOutput {
             background: #fff;
-            max-height: none;
             min-height: 200px;
             flex: 1;
+            overflow-y: auto;
         }
 
         .message.assistant.selected .message-content {
@@ -673,7 +678,7 @@
             </div>
         </div>
 
-        <div class="logit-lens-side-panel" id="logitLensSidePanel">
+        <div class="logit-lens-side-panel collapsed" id="logitLensSidePanel">
             <div class="side-panel-header">
                 <h3>Logit Lens Explorer</h3>
                 <button class="collapse-btn" onclick="toggleSidePanel()" title="Toggle panel">
