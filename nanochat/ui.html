@@ -24,6 +24,13 @@
             flex-direction: column;
         }
 
+        .main-container {
+            flex: 1;
+            display: flex;
+            overflow: hidden;
+            position: relative;
+        }
+
         .header {
             background-color: #ffffff;
             padding: 1.25rem 1.5rem;
@@ -73,6 +80,11 @@
             flex: 1;
             overflow-y: auto;
             background-color: #ffffff;
+            transition: margin-right 0.3s ease;
+        }
+
+        .chat-container.panel-open {
+            margin-right: 0;
         }
 
         .chat-wrapper {
@@ -421,6 +433,224 @@
             border-radius: 0.75rem;
             margin-top: 0.5rem;
         }
+
+        /* Side Panel Styles */
+        .logit-lens-side-panel {
+            width: 450px;
+            background-color: #f9fafb;
+            border-left: 1px solid #e5e7eb;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s ease, width 0.3s ease;
+            z-index: 10;
+        }
+
+        .logit-lens-side-panel.collapsed {
+            transform: translateX(450px);
+            width: 0;
+        }
+
+        .side-panel-header {
+            padding: 1rem 1.25rem;
+            background-color: #ffffff;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .side-panel-header h3 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .collapse-btn {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            border: 1px solid #e5e7eb;
+            border-radius: 0.5rem;
+            background-color: #ffffff;
+            color: #6b7280;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .collapse-btn:hover {
+            background-color: #f3f4f6;
+            border-color: #d1d5db;
+            color: #374151;
+        }
+
+        .collapse-btn svg {
+            transition: transform 0.3s ease;
+        }
+
+        .logit-lens-side-panel.collapsed .collapse-btn svg {
+            transform: rotate(180deg);
+        }
+
+        .side-panel-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.25rem;
+        }
+
+        .side-panel-empty-state {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 3rem 2rem;
+            color: #9ca3af;
+        }
+
+        .side-panel-empty-state svg {
+            margin-bottom: 1rem;
+            opacity: 0.5;
+        }
+
+        .side-panel-empty-state p {
+            margin: 0;
+            font-size: 0.875rem;
+            line-height: 1.5;
+        }
+
+        .side-panel-active-content {
+            display: flex;
+            flex-direction: column;
+            gap: 1.25rem;
+        }
+
+        .logit-lens-info {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+            font-size: 0.8125rem;
+            line-height: 1.5;
+            color: #64748b;
+        }
+
+        .logit-lens-info strong {
+            color: #3b82f6;
+            font-weight: 600;
+        }
+
+        .sampling-params {
+            margin-top: 0.75rem;
+            padding-top: 0.75rem;
+            border-top: 1px solid #f1f5f9;
+            font-size: 0.75rem;
+        }
+
+        .layer-controls {
+            background: #fff;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #e5e7eb;
+        }
+
+        .animation-controls {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .control-btn {
+            padding: 0.5rem 0.875rem;
+            font-size: 0.8125rem;
+            border: 1px solid #d1d5db;
+            border-radius: 0.5rem;
+            background-color: #ffffff;
+            color: #374151;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.375rem;
+            font-weight: 500;
+        }
+
+        .control-btn:hover {
+            background-color: #f9fafb;
+            border-color: #9ca3af;
+        }
+
+        .control-btn.active {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+            color: #ffffff;
+        }
+
+        .control-btn svg {
+            flex-shrink: 0;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: #6b7280;
+            margin-left: auto;
+        }
+
+        .speed-control input[type="range"] {
+            width: 80px;
+            height: 4px;
+            -webkit-appearance: none;
+            appearance: none;
+            background: #e5e7eb;
+            border-radius: 2px;
+            outline: none;
+        }
+
+        .speed-control input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 12px;
+            height: 12px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .speed-control input[type="range"]::-moz-range-thumb {
+            width: 12px;
+            height: 12px;
+            background: #3b82f6;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+        }
+
+        .speed-control span {
+            min-width: 45px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        #sidePanelOutput {
+            background: #fff;
+            max-height: none;
+            min-height: 200px;
+            flex: 1;
+        }
+
+        .message.assistant.selected .message-content {
+            background-color: #eff6ff;
+            border-left: 3px solid #3b82f6;
+            padding-left: calc(1rem - 3px);
+        }
     </style>
 </head>
 <body>
@@ -436,9 +666,75 @@
         </div>
     </div>
 
-    <div class="chat-container" id="chatContainer">
-        <div class="chat-wrapper" id="chatWrapper">
-            <!-- Messages will be added here -->
+    <div class="main-container">
+        <div class="chat-container" id="chatContainer">
+            <div class="chat-wrapper" id="chatWrapper">
+                <!-- Messages will be added here -->
+            </div>
+        </div>
+
+        <div class="logit-lens-side-panel" id="logitLensSidePanel">
+            <div class="side-panel-header">
+                <h3>Logit Lens Explorer</h3>
+                <button class="collapse-btn" onclick="toggleSidePanel()" title="Toggle panel">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15 18 9 12 15 6"></polyline>
+                    </svg>
+                </button>
+            </div>
+            <div class="side-panel-content">
+                <div class="side-panel-empty-state">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M12 2L2 7L12 12L22 7L12 2Z"></path>
+                        <path d="M2 17L12 22L22 17"></path>
+                        <path d="M2 12L12 17L22 12"></path>
+                    </svg>
+                    <p>Click on an assistant message to view its logit-lens visualization</p>
+                </div>
+                <div class="side-panel-active-content" style="display: none;">
+                    <div class="logit-lens-info">
+                        <strong>Logit Lens:</strong> Shows what each transformer layer predicts using greedy decoding.
+                        This may differ from the actual message which uses sampling.
+                        <div class="sampling-params">
+                            <strong>Sampling:</strong> <span id="sidePanelSamplingParams">N/A</span>
+                        </div>
+                    </div>
+
+                    <div class="layer-controls">
+                        <div class="layer-scrubber">
+                            <input type="range" class="layer-slider" id="sidePanelLayerSlider" min="0" max="32" value="32">
+                            <div class="layer-info" id="sidePanelLayerInfo">
+                                <div class="font-semibold">Layer 32</div>
+                                <div class="text-xs text-gray-500">final</div>
+                            </div>
+                        </div>
+
+                        <div class="animation-controls">
+                            <button class="control-btn" id="playPauseBtn" onclick="toggleAnimation()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                    <path d="M8 5v14l11-7z"></path>
+                                </svg>
+                                Play
+                            </button>
+                            <button class="control-btn" onclick="resetToFinalLayer()">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="23 4 23 10 17 10"></polyline>
+                                    <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                                </svg>
+                                Reset
+                            </button>
+                            <label class="speed-control">
+                                Speed: <input type="range" id="animationSpeed" min="50" max="500" value="200" step="50">
+                                <span id="speedLabel">200ms</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="logit-lens-output" id="sidePanelOutput">
+                        Select a message to view layer predictions
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -514,34 +810,81 @@
             chatInput.focus();
         }
 
-        // Logit-Lens Functions
-        function toggleLogitLens(messageIndex) {
-            const playButton = document.querySelector(`.logit-lens-toggle[data-message-index="${messageIndex}"]`);
-            const panel = document.querySelector(`.logit-lens-panel[data-message-index="${messageIndex}"]`);
+        // Side Panel Logit-Lens Functions
+        let currentSelectedMessage = null;
+        let animationInterval = null;
 
-            if (panel.classList.contains('active')) {
-                panel.classList.remove('active');
-                playButton.classList.remove('active');
-                playButton.innerHTML = '▶';
-            } else {
-                panel.classList.add('active');
-                playButton.classList.add('active');
-                playButton.innerHTML = '⏸';
+        function selectMessageForLogitLens(messageIndex) {
+            const data = logitLensData[messageIndex];
 
-                // If we have data, update display
-                if (logitLensData[messageIndex]) {
-                    updateLayerDisplay(messageIndex, 32); // Start at final layer
+            // Remove selection from previous message
+            if (currentSelectedMessage !== null) {
+                const prevMessage = document.querySelector(`.message.assistant[data-message-index="${currentSelectedMessage}"]`);
+                if (prevMessage) {
+                    prevMessage.classList.remove('selected');
                 }
+            }
+
+            // Add selection to current message
+            const messageDiv = document.querySelector(`.message.assistant[data-message-index="${messageIndex}"]`);
+            if (messageDiv) {
+                messageDiv.classList.add('selected');
+            }
+
+            currentSelectedMessage = messageIndex;
+
+            // Show side panel
+            const sidePanel = document.getElementById('logitLensSidePanel');
+            sidePanel.classList.remove('collapsed');
+
+            // Update side panel content
+            if (data && data.layer_texts) {
+                // Hide empty state, show active content
+                document.querySelector('.side-panel-empty-state').style.display = 'none';
+                document.querySelector('.side-panel-active-content').style.display = 'flex';
+
+                // Update sampling params
+                if (data.sampling_params) {
+                    document.getElementById('sidePanelSamplingParams').textContent =
+                        `Temperature: ${data.sampling_params.temperature}, Top-K: ${data.sampling_params.top_k}`;
+                }
+
+                // Clear any previous fallback warning
+                const existingWarning = document.querySelector('.fallback-warning');
+                if (existingWarning) {
+                    existingWarning.remove();
+                }
+
+                // Show fallback message if applicable
+                if (data.fallback) {
+                    const infoDiv = document.querySelector('.side-panel-active-content .logit-lens-info');
+                    const warningDiv = document.createElement('div');
+                    warningDiv.className = 'fallback-warning';
+                    warningDiv.style.cssText = 'margin-top: 6px; font-size: 11px; color: #f59e0b; font-weight: 500;';
+                    warningDiv.textContent = '⚠️ Limited mode: showing actual generated text for all layers';
+                    infoDiv.appendChild(warningDiv);
+                }
+
+                // Reset slider to final layer
+                const slider = document.getElementById('sidePanelLayerSlider');
+                slider.max = data.layer_texts.length - 1;
+                slider.value = data.layer_texts.length - 1;
+
+                // Update display
+                updateSidePanelDisplay(data.layer_texts.length - 1);
+            } else {
+                // Show empty state if no data
+                document.querySelector('.side-panel-empty-state').style.display = 'flex';
+                document.querySelector('.side-panel-active-content').style.display = 'none';
             }
         }
 
-        function updateLayerDisplay(messageIndex, layerIndex) {
-            const output = document.querySelector(`.logit-lens-output[data-message-index="${messageIndex}"]`);
-            const layerInfo = document.querySelector(`.logit-lens-panel[data-message-index="${messageIndex}"] .layer-scrubber .layer-info`);
-            const data = logitLensData[messageIndex];
+        function updateSidePanelDisplay(layerIndex) {
+            if (currentSelectedMessage === null) return;
 
+            const data = logitLensData[currentSelectedMessage];
             if (!data || !data.layer_texts || layerIndex >= data.layer_texts.length) {
-                output.textContent = 'No logit-lens data available for this layer.';
+                document.getElementById('sidePanelOutput').textContent = 'No data available for this layer.';
                 return;
             }
 
@@ -550,14 +893,14 @@
             const finalText = data.layer_texts[data.layer_texts.length - 1];
 
             // Update layer info
-            layerInfo.innerHTML = `
+            document.getElementById('sidePanelLayerInfo').innerHTML = `
                 <div class="font-semibold">${layerName}</div>
                 <div class="text-xs text-gray-500">${layerIndex}/${data.layer_texts.length - 1}</div>
             `;
 
             // Create highlighted text
             const highlightedText = createHighlightedText(layerText, finalText);
-            output.innerHTML = highlightedText;
+            document.getElementById('sidePanelOutput').innerHTML = highlightedText;
         }
 
         function createHighlightedText(currentText, finalText) {
@@ -569,89 +912,105 @@
             return currentTokens.map((token, index) => {
                 const isStable = token === (finalTokens[index] || '');
                 const cssClass = isStable ? 'token-stable' : 'token-changing';
-                return `<span class="${cssClass}">${token}</span>`;
+                const escapedToken = token.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                return `<span class="${cssClass}">${escapedToken}</span>`;
             }).join('');
         }
 
-        function toggleLogitLensAnimation(messageIndex) {
-            const playBtn = document.querySelector(`[data-action="play"][data-message-index="${messageIndex}"]`);
-            const data = logitLensData[messageIndex];
+        function toggleSidePanel() {
+            const sidePanel = document.getElementById('logitLensSidePanel');
+            sidePanel.classList.toggle('collapsed');
 
-            if (!data || !data.layer_texts) {
-                alert('No logit-lens data available for this message.');
-                return;
+            // Stop animation if panel is being closed
+            if (sidePanel.classList.contains('collapsed') && animationInterval) {
+                clearInterval(animationInterval);
+                animationInterval = null;
+                const playBtn = document.getElementById('playPauseBtn');
+                playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg> Play';
+                playBtn.classList.remove('active');
             }
+        }
 
-            if (animationIntervals[messageIndex]) {
+        function toggleAnimation() {
+            if (currentSelectedMessage === null) return;
+
+            const data = logitLensData[currentSelectedMessage];
+            if (!data || !data.layer_texts) return;
+
+            const playBtn = document.getElementById('playPauseBtn');
+            const slider = document.getElementById('sidePanelLayerSlider');
+
+            if (animationInterval) {
                 // Stop animation
-                clearInterval(animationIntervals[messageIndex]);
-                delete animationIntervals[messageIndex];
-                playBtn.innerHTML = '▶ Play';
+                clearInterval(animationInterval);
+                animationInterval = null;
+                playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg> Play';
                 playBtn.classList.remove('active');
             } else {
                 // Start animation
                 let currentLayer = 0;
                 const maxLayer = data.layer_texts.length - 1;
+                const speed = parseInt(document.getElementById('animationSpeed').value);
 
-                playBtn.innerHTML = '⏸ Pause';
+                playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg> Pause';
                 playBtn.classList.add('active');
 
-                // Update slider and display
-                const slider = document.querySelector(`.layer-slider[data-message-index="${messageIndex}"]`);
                 slider.value = currentLayer;
-                updateLayerDisplay(messageIndex, currentLayer);
+                updateSidePanelDisplay(currentLayer);
 
-                animationIntervals[messageIndex] = setInterval(() => {
+                animationInterval = setInterval(() => {
                     currentLayer++;
                     if (currentLayer > maxLayer) {
-                        clearInterval(animationIntervals[messageIndex]);
-                        delete animationIntervals[messageIndex];
-                        playBtn.innerHTML = '▶ Play';
+                        clearInterval(animationInterval);
+                        animationInterval = null;
+                        playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg> Play';
                         playBtn.classList.remove('active');
                     } else {
                         slider.value = currentLayer;
-                        updateLayerDisplay(messageIndex, currentLayer);
+                        updateSidePanelDisplay(currentLayer);
                     }
-                }, 500);
+                }, speed);
             }
         }
 
-        function resetLogitLens(messageIndex) {
-            // Stop any running animation
-            if (animationIntervals[messageIndex]) {
-                clearInterval(animationIntervals[messageIndex]);
-                delete animationIntervals[messageIndex];
+        function resetToFinalLayer() {
+            if (currentSelectedMessage === null) return;
+
+            const data = logitLensData[currentSelectedMessage];
+            if (!data || !data.layer_texts) return;
+
+            // Stop animation
+            if (animationInterval) {
+                clearInterval(animationInterval);
+                animationInterval = null;
+                const playBtn = document.getElementById('playPauseBtn');
+                playBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"></path></svg> Play';
+                playBtn.classList.remove('active');
             }
 
             // Reset to final layer
-            const slider = document.querySelector(`.layer-slider[data-message-index="${messageIndex}"]`);
-            const playBtn = document.querySelector(`[data-action="play"][data-message-index="${messageIndex}"]`);
-
-            slider.value = 32;
-            playBtn.innerHTML = '▶ Play';
-            playBtn.classList.remove('active');
-
-            updateLayerDisplay(messageIndex, 32);
+            const slider = document.getElementById('sidePanelLayerSlider');
+            slider.value = data.layer_texts.length - 1;
+            updateSidePanelDisplay(data.layer_texts.length - 1);
         }
 
-        function toggleHighlight(messageIndex) {
-            const output = document.querySelector(`.logit-lens-output[data-message-index="${messageIndex}"]`);
-            const btn = document.querySelector(`[data-action="toggle-highlight"][data-message-index="${messageIndex}"]`);
+        // Initialize side panel event listeners when DOM is ready
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('sidePanelLayerSlider').addEventListener('input', function(e) {
+                updateSidePanelDisplay(parseInt(e.target.value));
+            });
 
-            if (output.classList.contains('highlight-enabled')) {
-                output.classList.remove('highlight-enabled');
-                btn.classList.remove('active');
-                // Remove highlighting by getting current layer and refreshing
-                const slider = document.querySelector(`.layer-slider[data-message-index="${messageIndex}"]`);
-                updateLayerDisplay(messageIndex, parseInt(slider.value));
-            } else {
-                output.classList.add('highlight-enabled');
-                btn.classList.add('active');
-                // Re-apply highlighting
-                const slider = document.querySelector(`.layer-slider[data-message-index="${messageIndex}"]`);
-                updateLayerDisplay(messageIndex, parseInt(slider.value));
-            }
-        }
+            document.getElementById('animationSpeed').addEventListener('input', function(e) {
+                document.getElementById('speedLabel').textContent = e.target.value + 'ms';
+
+                // If animation is running, restart with new speed
+                if (animationInterval) {
+                    const playBtn = document.getElementById('playPauseBtn');
+                    toggleAnimation(); // Stop
+                    setTimeout(() => toggleAnimation(), 50); // Restart
+                }
+            });
+        });
 
         
         function addMessage(role, content, messageIndex = null) {
@@ -673,91 +1032,33 @@
                 });
             }
 
-            // Add click handler for assistant messages to enable regeneration
+            // Add click handler for assistant messages to show logit-lens
             if (role === 'assistant' && messageIndex !== null) {
+                messageDiv.setAttribute('data-message-index', messageIndex);
                 contentDiv.setAttribute('data-message-index', messageIndex);
-                contentDiv.setAttribute('title', 'Click to regenerate this response');
-                contentDiv.addEventListener('click', function() {
+
+                contentDiv.addEventListener('click', function(e) {
+                    if (!isGenerating) {
+                        // Right-click or ctrl+click for regeneration
+                        if (e.ctrlKey || e.metaKey || e.button === 2) {
+                            regenerateMessage(messageIndex);
+                        } else {
+                            // Left-click to show logit-lens
+                            selectMessageForLogitLens(messageIndex);
+                        }
+                    }
+                });
+
+                // Add context menu for regeneration
+                contentDiv.addEventListener('contextmenu', function(e) {
+                    e.preventDefault();
                     if (!isGenerating) {
                         regenerateMessage(messageIndex);
                     }
                 });
-
-                // Add logit-lens play button
-                const playButton = document.createElement('button');
-                playButton.className = 'logit-lens-toggle';
-                playButton.innerHTML = '▶';
-                playButton.setAttribute('title', 'Explore logit-lens');
-                playButton.setAttribute('data-message-index', messageIndex);
-
-                // Create logit-lens panel
-                const lensPanel = document.createElement('div');
-                lensPanel.className = 'logit-lens-panel';
-                lensPanel.setAttribute('data-message-index', messageIndex);
-                lensPanel.innerHTML = `
-                    <div class="logit-lens-info" style="background: #f8fafc; padding: 8px; border-radius: 6px; margin-bottom: 12px; font-size: 12px; color: #64748b; border-left: 3px solid #3b82f6;">
-                        <strong>Logit Lens:</strong> Shows what each transformer layer predicts using greedy decoding.
-                        This may differ from the actual message which uses sampling.
-                        Differences are normal and show how sampling introduces variety.
-                        <div class="sampling-params" style="margin-top: 6px; font-size: 11px;">
-                            <strong>Sampling:</strong> <span id="sampling-params-${messageIndex}">Loading...</span>
-                        </div>
-                    </div>
-                    <div class="layer-scrubber">
-                        <input type="range" class="layer-slider" min="0" max="32" value="32"
-                               data-message-index="${messageIndex}">
-                        <div class="layer-info">
-                            <div class="font-semibold">Layer 32</div>
-                            <div class="text-xs text-gray-500">final</div>
-                        </div>
-                    </div>
-                    <div class="logit-lens-output" data-message-index="${messageIndex}">
-                        No logit-lens data available yet.
-                    </div>
-                    <div class="logit-lens-controls">
-                        <button class="logit-lens-btn" data-action="play" data-message-index="${messageIndex}">
-                            ▶ Play
-                        </button>
-                        <button class="logit-lens-btn" data-action="reset" data-message-index="${messageIndex}">
-                            ↺ Reset
-                        </button>
-                        <button class="logit-lens-btn" data-action="toggle-highlight" data-message-index="${messageIndex}">
-                            🔍 Highlight
-                        </button>
-                    </div>
-                `;
-
-                playButton.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    toggleLogitLens(messageIndex);
-                });
-
-                // Add event listeners for controls
-                lensPanel.querySelector('.layer-slider').addEventListener('input', function(e) {
-                    updateLayerDisplay(messageIndex, parseInt(e.target.value));
-                });
-
-                lensPanel.querySelector('[data-action="play"]').addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    toggleLogitLensAnimation(messageIndex);
-                });
-
-                lensPanel.querySelector('[data-action="reset"]').addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    resetLogitLens(messageIndex);
-                });
-
-                lensPanel.querySelector('[data-action="toggle-highlight"]').addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    toggleHighlight(messageIndex);
-                });
-
-                messageDiv.appendChild(contentDiv);
-                messageDiv.appendChild(playButton);
-                messageDiv.appendChild(lensPanel);
-            } else {
-                messageDiv.appendChild(contentDiv);
             }
+
+            messageDiv.appendChild(contentDiv);
             chatWrapper.appendChild(messageDiv);
 
             chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -873,37 +1174,8 @@
                 if (receivedLogitLensData) {
                     logitLensData[assistantMessageIndex] = receivedLogitLensData;
 
-                    // Update sampling parameters display
-                    const samplingParamsElement = document.getElementById(`sampling-params-${assistantMessageIndex}`);
-                    if (samplingParamsElement && receivedLogitLensData.sampling_params) {
-                        const params = receivedLogitLensData.sampling_params;
-                        samplingParamsElement.textContent = `Temperature: ${params.temperature}, Top-K: ${params.top_k}`;
-                    }
-
-                    // Show fallback message if using fallback data
-                    if (receivedLogitLensData.fallback) {
-                        const infoElement = document.querySelector(`.logit-lens-panel[data-message-index="${assistantMessageIndex}"] .logit-lens-info`);
-                        if (infoElement) {
-                            infoElement.innerHTML += `
-                                <div style="margin-top: 6px; font-size: 11px; color: #f59e0b; font-weight: 500;">
-                                    ⚠️ Limited mode: showing actual generated text for all layers
-                                </div>
-                            `;
-                        }
-                    }
-
-                    // Automatically show the logit-lens panel
-                    const panel = document.querySelector(`.logit-lens-panel[data-message-index="${assistantMessageIndex}"]`);
-                    const playButton = document.querySelector(`.logit-lens-toggle[data-message-index="${assistantMessageIndex}"]`);
-                    if (panel) {
-                        panel.classList.add('active');
-                        if (playButton) {
-                            playButton.classList.add('active');
-                            playButton.innerHTML = '⏸';
-                        }
-                        // Update to show the final layer by default
-                        updateLayerDisplay(assistantMessageIndex, receivedLogitLensData.layer_texts.length - 1);
-                    }
+                    // Automatically show in side panel
+                    selectMessageForLogitLens(assistantMessageIndex);
                 }
 
                 // Add click handler to regenerate this assistant message
